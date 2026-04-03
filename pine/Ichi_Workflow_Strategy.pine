@@ -1,6 +1,6 @@
 //@version=6
 //@strategy_alert_message {{strategy.order.alert_message}}
-strategy("MemeticMoney Ichi Workflow Strategy", shorttitle = "MM Ichi Strat", overlay = true, pyramiding = 0, calc_on_every_tick = false, default_qty_type = strategy.percent_of_equity, default_qty_value = 75, commission_type = strategy.commission.percent, commission_value = 0.1, slippage = 1, margin_long = 100, margin_short = 100)
+strategy("MMT Ichi Workflow Strategy", shorttitle = "MMT Ichi Strat", overlay = true, pyramiding = 0, calc_on_every_tick = false, default_qty_type = strategy.percent_of_equity, default_qty_value = 75, commission_type = strategy.commission.percent, commission_value = 0.1, slippage = 1, margin_long = 100, margin_short = 100)
 
 string PRESET_CRYPTO = "Crypto Doubled"
 string PRESET_TRAD_STD = "Traditional Standard"
@@ -264,10 +264,10 @@ string shortSetup = shortChecklist ? "Checklist" : shortKijun ? "Kijun Bounce" :
 string longOrderId = longChecklist ? "L_CHECKLIST" : longKijun ? "L_KIJUN" : longBreakout ? "L_BREAKOUT" : ""
 string shortOrderId = shortChecklist ? "S_CHECKLIST" : shortKijun ? "S_KIJUN" : shortBreakout ? "S_BREAKOUT" : ""
 
-string longEntryMessage = f_alert_json("MemeticMoney Ichi Workflow Strategy", "long", longSetup, ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
-string shortEntryMessage = f_alert_json("MemeticMoney Ichi Workflow Strategy", "short", shortSetup, ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
-string longExitMessage = f_alert_json("MemeticMoney Ichi Workflow Strategy", "exit_long", "Invalidation", ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
-string shortExitMessage = f_alert_json("MemeticMoney Ichi Workflow Strategy", "exit_short", "Invalidation", ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
+string longEntryMessage = f_alert_json("MMT Ichi Workflow Strategy", "long", longSetup, ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
+string shortEntryMessage = f_alert_json("MMT Ichi Workflow Strategy", "short", shortSetup, ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
+string longExitMessage = f_alert_json("MMT Ichi Workflow Strategy", "exit_long", "Invalidation", ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
+string shortExitMessage = f_alert_json("MMT Ichi Workflow Strategy", "exit_short", "Invalidation", ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
 
 bool canEnterLong = allowLong and strategy.position_size == 0 and longSetup != ""
 bool canEnterShort = allowShort and strategy.position_size == 0 and shortSetup != ""

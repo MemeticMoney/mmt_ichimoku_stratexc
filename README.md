@@ -23,9 +23,9 @@ The idea is simple:
 ## Included Scripts
 
 - [`pine/Ichi_Workflow_Overlay.pine`](./pine/Ichi_Workflow_Overlay.pine)
-  - Public TradingView indicator name: `MemeticMoney Ichi Workflow Overlay`
+  - Pine script title in this repo: `MMT Ichi Workflow Overlay`
 - [`pine/Ichi_Workflow_Strategy.pine`](./pine/Ichi_Workflow_Strategy.pine)
-  - Public TradingView strategy name: `MemeticMoney Ichi Workflow Strategy`
+  - Pine script title in this repo: `MMT Ichi Workflow Strategy`
 
 ## What The Overlay Does
 
@@ -69,6 +69,8 @@ The idea is simple:
 
 More detail on the dashboards is in [`docs/Ichi_Workflow_Metrics.md`](./docs/Ichi_Workflow_Metrics.md).
 
+TradingView publication prep notes are in [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md).
+
 ## Design Notes
 
 - The overlay is fully usable without live alerts.
@@ -81,6 +83,7 @@ More detail on the dashboards is in [`docs/Ichi_Workflow_Metrics.md`](./docs/Ich
 - [`pine/Ichi_Workflow_Overlay.pine`](./pine/Ichi_Workflow_Overlay.pine)
 - [`pine/Ichi_Workflow_Strategy.pine`](./pine/Ichi_Workflow_Strategy.pine)
 - [`docs/Ichi_Workflow_Metrics.md`](./docs/Ichi_Workflow_Metrics.md)
+- [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md)
 - [`DISCLAIMER.md`](./DISCLAIMER.md)
 - [`LICENSE`](./LICENSE)
 
