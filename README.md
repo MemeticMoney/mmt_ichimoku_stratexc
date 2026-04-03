@@ -1,6 +1,6 @@
-# MemeticMoney Ichimoku Strategy Execution
+# MMT Ichi Workflow
 
-Open-source TradingView Pine v6 scripts for a two-layer Ichimoku workflow.
+Open-source TradingView Pine v6 scripts for the live `MMT Ichi Workflow` overlay and strategy.
 
 Created by MemeticMoney.
 
@@ -23,9 +23,18 @@ The idea is simple:
 ## Included Scripts
 
 - [`pine/Ichi_Workflow_Overlay.pine`](./pine/Ichi_Workflow_Overlay.pine)
-  - Pine script title in this repo: `MMT Ichi Workflow Overlay`
+  - TradingView title: `MMT Ichi Workflow Overlay`
 - [`pine/Ichi_Workflow_Strategy.pine`](./pine/Ichi_Workflow_Strategy.pine)
-  - Pine script title in this repo: `MMT Ichi Workflow Strategy`
+  - TradingView title: `MMT Ichi Workflow Strategy`
+
+## Published On TradingView
+
+- Profile scripts page: [`memeticmoney` on TradingView](https://www.tradingview.com/u/memeticmoney/#published-scripts)
+- Public script titles:
+  - `MMT Ichi Workflow Overlay`
+  - `MMT Ichi Workflow Strategy`
+
+If TradingView search lags, the profile scripts page is the most reliable place to find the live publications.
 
 ## What The Overlay Does
 
@@ -69,7 +78,7 @@ The idea is simple:
 
 More detail on the dashboards is in [`docs/Ichi_Workflow_Metrics.md`](./docs/Ichi_Workflow_Metrics.md).
 
-TradingView publication prep notes are in [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md).
+TradingView publication notes are in [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md).
 
 ## Design Notes
 

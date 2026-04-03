@@ -1,6 +1,6 @@
 //@version=6
 //@strategy_alert_message {{strategy.order.alert_message}}
-strategy("MMT Ichi Workflow Strategy", shorttitle = "MMT Ichi Strat", overlay = true, pyramiding = 0, calc_on_every_tick = false, default_qty_type = strategy.percent_of_equity, default_qty_value = 75, commission_type = strategy.commission.percent, commission_value = 0.1, slippage = 1, margin_long = 100, margin_short = 100)
+strategy("MMT Ichi Workflow Strategy", shorttitle = "MMT IchiS", overlay = true, pyramiding = 0, calc_on_every_tick = false, default_qty_type = strategy.percent_of_equity, default_qty_value = 75, commission_type = strategy.commission.percent, commission_value = 0.1, slippage = 1, margin_long = 100, margin_short = 100)
 
 string PRESET_CRYPTO = "Crypto Doubled"
 string PRESET_TRAD_STD = "Traditional Standard"
@@ -330,7 +330,8 @@ bool useValidationTopSpacer = pushValidationBelowBanner and (validationPositionL
 int validationBaseRow = useValidationTopSpacer ? 1 : 0
 
 var table validationDashboard = table.new(validationPosition, 2, 10, frame_color = color.new(color.white, 80), border_width = 1)
-if barstate.islast
+bool shouldRenderValidationDashboard = barstate.islast or barstate.islastconfirmedhistory
+if shouldRenderValidationDashboard
     if showValidationDashboard
         table.cell(validationDashboard, 0, 0, f_spacer_text(useValidationTopSpacer), text_color = color.white, bgcolor = na, text_size = size.large)
         table.cell(validationDashboard, 1, 0, f_spacer_text(useValidationTopSpacer), text_color = color.white, bgcolor = na, text_size = size.large)

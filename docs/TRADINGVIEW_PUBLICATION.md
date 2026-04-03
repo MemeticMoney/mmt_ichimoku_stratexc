@@ -1,40 +1,26 @@
-# TradingView Publication Prep
+# TradingView Publication Notes
 
-This document prepares the scripts in this repository for public publication on TradingView.
+This document records the live TradingView publication details for the scripts in this repository.
 
-## Branding Note
+## Live Publication Status
 
-The Pine files in this repository use `MMT` in their script titles.
+Both scripts are published publicly on TradingView under the `memeticmoney` profile.
 
-For public TradingView publication, the safer path is to use neutral publication titles in the publish dialog, even if the underlying Pine title contains `MMT`.
+- Profile page:
+  - [memeticmoney published scripts](https://www.tradingview.com/u/memeticmoney/#published-scripts)
+- Public titles:
+  - `MMT Ichi Workflow Overlay`
+  - `MMT Ichi Workflow Strategy`
 
-Why:
+## Naming Note
 
-- TradingView's publishing documentation says public script titles should not include advertisement or promotional text.
-- TradingView's support guidance also says public scripts should not contain company names or external promotion.
-- `MMT` may be accepted, but it could also be interpreted as a brand reference by moderation.
-
-Recommended public TradingView titles:
-
-- `Ichimoku Workflow Overlay`
-- `Ichimoku Workflow Strategy`
-
-Higher-risk optional titles:
-
-- `MMT Ichimoku Workflow Overlay`
-- `MMT Ichimoku Workflow Strategy`
-
-Recommended approach:
-
-1. Publish first with the neutral titles above.
-2. Let your TradingView profile provide the authorship.
-3. Keep the GitHub repository attributed to MemeticMoney.
+The repository and the TradingView publications now use the same `MMT Ichi Workflow` naming so GitHub and TradingView stay aligned.
 
 ## Public Script Descriptions
 
 ### Overlay Description
 
-`Ichimoku Workflow Overlay` is a chart-side execution layer built around a dual-timeframe Ichimoku workflow.
+`MMT Ichi Workflow Overlay` is a chart-side execution layer built around a dual-timeframe Ichimoku workflow.
 
 It displays:
 
@@ -57,7 +43,7 @@ Default model:
 
 ### Strategy Description
 
-`Ichimoku Workflow Strategy` is the validation layer for the same Ichimoku model used by the overlay.
+`MMT Ichi Workflow Strategy` is the validation layer for the same Ichimoku model used by the overlay.
 
 It is intended to answer whether the currently selected ticker and timeframe behave well with this workflow.
 
@@ -109,12 +95,12 @@ Before publishing:
 
 ## Publish Order
 
-Recommended sequence:
+Recommended sequence for future updates:
 
-1. Publish a private draft first.
-2. Review the script page.
-3. Confirm title, description, and chart preview are clean.
-4. Publish a separate public version once the draft looks correct.
+1. Update the Pine source locally.
+2. Review the chart preview for the script being updated.
+3. Update the existing public script if the change is minor and the live page already looks clean.
+4. Recheck the profile `Scripts` tab after the update lands.
 
 ## Suggested First Release Notes
 
@@ -126,13 +112,11 @@ Initial public release of the execution layer for the Ichimoku workflow.
 
 Initial public release of the validation and backtesting layer for the Ichimoku workflow.
 
-## GitHub Update After TradingView Publish
+## GitHub Alignment
 
-After both scripts are live on TradingView, add a short section to the GitHub README:
+GitHub should mirror the live TradingView release:
 
-`Published on TradingView`
-
-- `Ichimoku Workflow Overlay`: `<link>`
-- `Ichimoku Workflow Strategy`: `<link>`
-
-Keep GitHub as the canonical source repo, and use TradingView as the distribution layer for chart users.
+- use the same `MMT Ichi Workflow Overlay` and `MMT Ichi Workflow Strategy` titles
+- link to the public TradingView profile page
+- keep GitHub as the canonical source repository
+- use TradingView as the chart-user distribution layer

@@ -1,5 +1,5 @@
 //@version=6
-indicator("MMT Ichi Workflow Overlay", shorttitle = "MMT Ichi WF", overlay = true, max_lines_count = 8, max_labels_count = 100)
+indicator("MMT Ichi Workflow Overlay", shorttitle = "MMT IchiO", overlay = true, max_lines_count = 8, max_labels_count = 100)
 
 string PRESET_CRYPTO = "Crypto Doubled"
 string PRESET_TRAD_STD = "Traditional Standard"
