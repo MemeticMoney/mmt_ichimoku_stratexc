@@ -76,9 +76,32 @@ If TradingView search lags, the profile scripts page is the most reliable place 
 3. If the strategy layer looks acceptable, shift to the overlay.
 4. Use the overlay to read `CTF Score`, `HTF Score`, `Regime`, `Trade Call`, and `Execution`.
 
-More detail on the dashboards is in [`docs/Ichi_Workflow_Metrics.md`](./docs/Ichi_Workflow_Metrics.md).
+## Documentation
 
-TradingView publication notes are in [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md).
+### Start Here
+
+- [`docs/Ichi_Workflow_Executive_Flowchart.md`](./docs/Ichi_Workflow_Executive_Flowchart.md)
+  - Best first read for most users
+  - One-screen workflow showing how the strategy and overlay work together
+- [`docs/Ichi_Workflow_Logic.md`](./docs/Ichi_Workflow_Logic.md)
+  - Best second read
+  - Full human-readable trading logic, state conditions, targets, and invalidations
+
+### Reference
+
+- [`docs/Ichi_Workflow_Metrics.md`](./docs/Ichi_Workflow_Metrics.md)
+  - Dashboard field definitions
+- [`docs/Ichi_Workflow_Flowchart.md`](./docs/Ichi_Workflow_Flowchart.md)
+  - Full visual decision map with deeper state notes
+- [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md)
+  - TradingView publication notes
+
+The recommended reading order is:
+
+1. Executive flowchart
+2. Logic document
+3. Metrics reference
+4. Full flowchart deep dive
 
 ## Design Notes
 
@@ -92,6 +115,9 @@ TradingView publication notes are in [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/
 - [`pine/Ichi_Workflow_Overlay.pine`](./pine/Ichi_Workflow_Overlay.pine)
 - [`pine/Ichi_Workflow_Strategy.pine`](./pine/Ichi_Workflow_Strategy.pine)
 - [`docs/Ichi_Workflow_Metrics.md`](./docs/Ichi_Workflow_Metrics.md)
+- [`docs/Ichi_Workflow_Logic.md`](./docs/Ichi_Workflow_Logic.md)
+- [`docs/Ichi_Workflow_Flowchart.md`](./docs/Ichi_Workflow_Flowchart.md)
+- [`docs/Ichi_Workflow_Executive_Flowchart.md`](./docs/Ichi_Workflow_Executive_Flowchart.md)
 - [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md)
 - [`DISCLAIMER.md`](./DISCLAIMER.md)
 - [`LICENSE`](./LICENSE)
