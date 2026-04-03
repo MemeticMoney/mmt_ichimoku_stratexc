@@ -31,7 +31,7 @@ Use this checklist before pushing the public repo to GitHub.
 
 ## GitHub Release
 
-- Push to the private GitHub repo first.
+- Review the repo while it is still private, if possible.
 - Review the rendered README and file tree on GitHub.
 - Double-check that no unwanted files were included.
 - Only then switch the repository visibility to public.
