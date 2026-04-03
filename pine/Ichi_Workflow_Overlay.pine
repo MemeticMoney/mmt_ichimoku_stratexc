@@ -1,0 +1,533 @@
+//@version=6
+indicator("MemeticMoney Ichi Workflow Overlay", shorttitle = "MM Ichi WF", overlay = true, max_lines_count = 8, max_labels_count = 100)
+
+string PRESET_CRYPTO = "Crypto Doubled"
+string PRESET_TRAD_STD = "Traditional Standard"
+string PRESET_TRAD_DBL = "Traditional Doubled"
+string PRESET_CUSTOM = "Custom"
+
+string DIR_BOTH = "Both"
+string DIR_LONG = "Long Only"
+string DIR_SHORT = "Short Only"
+
+string POS_TOP_LEFT = "Top Left"
+string POS_TOP_RIGHT = "Top Right"
+string POS_BOTTOM_LEFT = "Bottom Left"
+string POS_BOTTOM_RIGHT = "Bottom Right"
+
+string GROUP_ICHI = "Ichimoku"
+string GROUP_SIGNAL = "Signals"
+string GROUP_DISPLAY = "Display"
+
+string preset = input.string(PRESET_CRYPTO, "Preset", options = [PRESET_CRYPTO, PRESET_TRAD_STD, PRESET_TRAD_DBL, PRESET_CUSTOM], group = GROUP_ICHI)
+int customConversion = input.int(20, "Custom Conversion", minval = 1, group = GROUP_ICHI)
+int customBase = input.int(61, "Custom Base", minval = 2, group = GROUP_ICHI)
+int customSpanB = input.int(120, "Custom Span B", minval = 2, group = GROUP_ICHI)
+int customDisplacement = input.int(30, "Custom Displacement", minval = 1, group = GROUP_ICHI)
+string htfTimeframe = input.timeframe("D", "Higher Timeframe", group = GROUP_ICHI)
+
+bool enableBreakout = input.bool(true, "Enable Kumo Breakout", group = GROUP_SIGNAL)
+bool enableChecklist = input.bool(true, "Enable Full Checklist", group = GROUP_SIGNAL)
+bool enableKijun = input.bool(true, "Enable Kijun Bounce", group = GROUP_SIGNAL)
+bool enableEdge = input.bool(true, "Enable Edge-to-Edge", group = GROUP_SIGNAL)
+string directionFilter = input.string(DIR_LONG, "Direction Filter", options = [DIR_BOTH, DIR_LONG, DIR_SHORT], group = GROUP_SIGNAL)
+
+bool showDashboard = input.bool(true, "Show Dashboard", group = GROUP_DISPLAY)
+string dashboardPositionLabel = input.string(POS_TOP_LEFT, "Dashboard Position", options = [POS_TOP_LEFT, POS_TOP_RIGHT, POS_BOTTOM_LEFT, POS_BOTTOM_RIGHT], group = GROUP_DISPLAY)
+bool pushDashboardBelowBanner = input.bool(true, "Push Dashboard Below Banner", group = GROUP_DISPLAY)
+bool showMarkers = input.bool(true, "Show Markers", group = GROUP_DISPLAY)
+bool useEnglishMarkers = input.bool(true, "Use English Signal Markers", group = GROUP_DISPLAY)
+bool showTradeGuidance = input.bool(true, "Show Trade Guidance", group = GROUP_DISPLAY)
+bool showLevelTags = input.bool(true, "Show Entry / Target / Exit Tags", group = GROUP_DISPLAY)
+bool showTargets = input.bool(true, "Show Flat Targets", group = GROUP_DISPLAY)
+bool showInvalidation = input.bool(true, "Show Invalidation Line", group = GROUP_DISPLAY)
+bool showRegimeShading = input.bool(true, "Show Regime Shading", group = GROUP_DISPLAY)
+
+color bullColor = color.rgb(32, 178, 170)
+color bearColor = color.rgb(183, 92, 70)
+color neutralColor = color.rgb(138, 146, 158)
+color dashboardBg = color.new(color.rgb(23, 29, 33), 12)
+color chikouColor = color.new(neutralColor, 30)
+int flatScanBars = 250
+
+f_resolve_lengths(_preset, _customConversion, _customBase, _customSpanB, _customDisplacement) =>
+    int conversion = _customConversion
+    int base = _customBase
+    int spanB = _customSpanB
+    int displacement = _customDisplacement
+    if _preset == PRESET_CRYPTO
+        conversion := 20
+        base := 61
+        spanB := 120
+        displacement := 30
+    else if _preset == PRESET_TRAD_STD
+        conversion := 9
+        base := 26
+        spanB := 52
+        displacement := 26
+    else if _preset == PRESET_TRAD_DBL
+        conversion := 18
+        base := 52
+        spanB := 104
+        displacement := 52
+    [conversion, base, spanB, displacement]
+
+f_tenkan(_conversion) =>
+    (ta.highest(high, _conversion) + ta.lowest(low, _conversion)) / 2.0
+
+f_kijun(_base) =>
+    (ta.highest(high, _base) + ta.lowest(low, _base)) / 2.0
+
+f_span_b(_spanB) =>
+    (ta.highest(high, _spanB) + ta.lowest(low, _spanB)) / 2.0
+
+f_span_a(_conversion, _base) =>
+    (f_tenkan(_conversion) + f_kijun(_base)) / 2.0
+
+f_nearly_equal(_a, _b) =>
+    not na(_a) and not na(_b) and math.abs(_a - _b) <= syminfo.mintick * 0.25
+
+f_cloud_top_now(_conversion, _base, _spanB, _displacement) =>
+    float spanAValue = f_span_a(_conversion, _base)
+    float spanBValue = f_span_b(_spanB)
+    math.max(spanAValue[_displacement], spanBValue[_displacement])
+
+f_cloud_bottom_now(_conversion, _base, _spanB, _displacement) =>
+    float spanAValue = f_span_a(_conversion, _base)
+    float spanBValue = f_span_b(_spanB)
+    math.min(spanAValue[_displacement], spanBValue[_displacement])
+
+f_price_state(_conversion, _base, _spanB, _displacement) =>
+    float cloudTopValue = f_cloud_top_now(_conversion, _base, _spanB, _displacement)
+    float cloudBottomValue = f_cloud_bottom_now(_conversion, _base, _spanB, _displacement)
+    if na(cloudTopValue) or na(cloudBottomValue)
+        0
+    else
+        close > cloudTopValue ? 1 : close < cloudBottomValue ? -1 : 0
+
+f_future_state(_conversion, _base, _spanB) =>
+    float spanAValue = f_span_a(_conversion, _base)
+    float spanBValue = f_span_b(_spanB)
+    if na(spanAValue) or na(spanBValue)
+        0
+    else
+        spanAValue > spanBValue ? 1 : spanAValue < spanBValue ? -1 : 0
+
+f_tk_state(_conversion, _base) =>
+    float tenkanValue = f_tenkan(_conversion)
+    float kijunValue = f_kijun(_base)
+    if na(tenkanValue) or na(kijunValue)
+        0
+    else
+        tenkanValue > kijunValue ? 1 : tenkanValue < kijunValue ? -1 : 0
+
+f_chikou_state(_conversion, _base, _spanB, _displacement) =>
+    float bodyHighPast = math.max(open[_displacement], close[_displacement])
+    float bodyLowPast = math.min(open[_displacement], close[_displacement])
+    float spanAValue = f_span_a(_conversion, _base)
+    float spanBValue = f_span_b(_spanB)
+    float cloudTopPast = math.max(spanAValue[_displacement * 2], spanBValue[_displacement * 2])
+    float cloudBottomPast = math.min(spanAValue[_displacement * 2], spanBValue[_displacement * 2])
+    if na(bodyHighPast) or na(bodyLowPast) or na(cloudTopPast) or na(cloudBottomPast)
+        0
+    else
+        close > bodyHighPast and close > cloudTopPast ? 1 : close < bodyLowPast and close < cloudBottomPast ? -1 : 0
+
+f_allow_long(_filter) =>
+    _filter != DIR_SHORT
+
+f_allow_short(_filter) =>
+    _filter != DIR_LONG
+
+f_format_price(_value) =>
+    na(_value) ? "n/a" : str.tostring(_value, format.mintick)
+
+f_spacer_text(_useSpacer) =>
+    _useSpacer ? " \n \n \n " : ""
+
+f_table_position(_label) =>
+    _label == POS_TOP_LEFT ? position.top_left : _label == POS_BOTTOM_LEFT ? position.bottom_left : _label == POS_BOTTOM_RIGHT ? position.bottom_right : position.top_right
+
+f_manage_horizontal_line(_line, _visible, _price, _color, _style, _width) =>
+    line managed = _line
+    if _visible and not na(_price)
+        if na(managed)
+            managed := line.new(bar_index, _price, bar_index + 1, _price, xloc = xloc.bar_index, extend = extend.right, color = _color, style = _style, width = _width)
+        else
+            line.set_xy1(managed, bar_index, _price)
+            line.set_xy2(managed, bar_index + 1, _price)
+            line.set_extend(managed, extend.right)
+            line.set_color(managed, _color)
+            line.set_style(managed, _style)
+            line.set_width(managed, _width)
+    else if not na(managed)
+        line.delete(managed)
+        managed := na
+    managed
+
+f_manage_price_label(_label, _visible, _x, _price, _text, _style, _color, _textColor, _size) =>
+    label managed = _label
+    if _visible and not na(_price)
+        if na(managed)
+            managed := label.new(_x, _price, _text, xloc = xloc.bar_index, yloc = yloc.price, style = _style, color = _color, textcolor = _textColor, size = _size)
+        else
+            label.set_x(managed, _x)
+            label.set_y(managed, _price)
+            label.set_text(managed, _text)
+            label.set_style(managed, _style)
+            label.set_color(managed, _color)
+            label.set_textcolor(managed, _textColor)
+            label.set_size(managed, _size)
+    else if not na(managed)
+        label.delete(managed)
+        managed := na
+    managed
+
+f_manage_abovebar_label(_label, _visible, _x, _text, _style, _color, _textColor, _size) =>
+    label managed = _label
+    if not na(managed)
+        label.delete(managed)
+        managed := na
+    if _visible
+        managed := label.new(_x, high, _text, xloc = xloc.bar_index, yloc = yloc.abovebar, style = _style, color = _color, textcolor = _textColor, size = _size)
+    managed
+
+[conversionLength, baseLength, spanBLength, displacement] = f_resolve_lengths(preset, customConversion, customBase, customSpanB, customDisplacement)
+
+float tenkan = f_tenkan(conversionLength)
+float kijun = f_kijun(baseLength)
+float spanA = f_span_a(conversionLength, baseLength)
+float spanB = f_span_b(spanBLength)
+float cloudTopNow = math.max(spanA[displacement], spanB[displacement])
+float cloudBottomNow = math.min(spanA[displacement], spanB[displacement])
+float cloudTopPrev = cloudTopNow[1]
+float cloudBottomPrev = cloudBottomNow[1]
+
+int priceState = f_price_state(conversionLength, baseLength, spanBLength, displacement)
+int futureState = f_future_state(conversionLength, baseLength, spanBLength)
+int tkState = f_tk_state(conversionLength, baseLength)
+int chikouState = f_chikou_state(conversionLength, baseLength, spanBLength, displacement)
+int ctfScore = priceState + futureState + tkState + chikouState
+
+int htfPriceState = request.security(syminfo.tickerid, htfTimeframe, f_price_state(conversionLength, baseLength, spanBLength, displacement)[1], lookahead = barmerge.lookahead_on)
+int htfFutureState = request.security(syminfo.tickerid, htfTimeframe, f_future_state(conversionLength, baseLength, spanBLength)[1], lookahead = barmerge.lookahead_on)
+int htfTkState = request.security(syminfo.tickerid, htfTimeframe, f_tk_state(conversionLength, baseLength)[1], lookahead = barmerge.lookahead_on)
+int htfChikouState = request.security(syminfo.tickerid, htfTimeframe, f_chikou_state(conversionLength, baseLength, spanBLength, displacement)[1], lookahead = barmerge.lookahead_on)
+int htfScore = htfPriceState + htfFutureState + htfTkState + htfChikouState
+
+bool allowLong = f_allow_long(directionFilter)
+bool allowShort = f_allow_short(directionFilter)
+bool htfBullOk = htfScore >= 3
+bool htfBearOk = htfScore <= -3
+
+bool priorInCloud = not na(cloudTopPrev) and not na(cloudBottomPrev) and close[1] <= cloudTopPrev and close[1] >= cloudBottomPrev
+bool nowInCloud = not na(cloudTopNow) and not na(cloudBottomNow) and close <= cloudTopNow and close >= cloudBottomNow
+bool enteredCloudFromBelow = not na(cloudBottomPrev) and close[1] < cloudBottomPrev and nowInCloud
+bool enteredCloudFromAbove = not na(cloudTopPrev) and close[1] > cloudTopPrev and nowInCloud
+
+bool bullishTkCross = tkState == 1 and tkState[1] != 1
+bool bearishTkCross = tkState == -1 and tkState[1] != -1
+
+bool longBreakoutState = enableBreakout and allowLong and htfBullOk and ctfScore >= 2 and priorInCloud and not na(cloudTopNow) and close > cloudTopNow
+bool shortBreakoutState = enableBreakout and allowShort and htfBearOk and ctfScore <= -2 and priorInCloud and not na(cloudBottomNow) and close < cloudBottomNow
+
+bool longChecklistState = enableChecklist and allowLong and htfBullOk and priceState == 1 and futureState == 1 and tkState == 1 and chikouState == 1 and ctfScore == 4
+bool shortChecklistState = enableChecklist and allowShort and htfBearOk and priceState == -1 and futureState == -1 and tkState == -1 and chikouState == -1 and ctfScore == -4
+
+bool longKijunState = enableKijun and allowLong and htfBullOk and ctfScore >= 3 and priceState == 1 and futureState == 1 and not na(kijun) and low <= kijun and close > kijun and close > open and close[1] > kijun[1]
+bool shortKijunState = enableKijun and allowShort and htfBearOk and ctfScore <= -3 and priceState == -1 and futureState == -1 and not na(kijun) and high >= kijun and close < kijun and close < open and close[1] < kijun[1]
+
+bool longEdgeState = enableEdge and allowLong and htfBullOk and enteredCloudFromBelow
+bool shortEdgeState = enableEdge and allowShort and htfBearOk and enteredCloudFromAbove
+
+bool longBreakout = longBreakoutState and not longBreakoutState[1]
+bool shortBreakout = shortBreakoutState and not shortBreakoutState[1]
+bool longChecklist = longChecklistState and not longChecklistState[1]
+bool shortChecklist = shortChecklistState and not shortChecklistState[1]
+bool longKijun = longKijunState and not longKijunState[1]
+bool shortKijun = shortKijunState and not shortKijunState[1]
+bool longEdge = longEdgeState and not longEdgeState[1]
+bool shortEdge = shortEdgeState and not shortEdgeState[1]
+
+float targetAbove1 = na
+float targetAbove2 = na
+float targetBelow1 = na
+float targetBelow2 = na
+float targetAbove1Dist = na
+float targetAbove2Dist = na
+float targetBelow1Dist = na
+float targetBelow2Dist = na
+
+int maxScan = math.max(0, math.min(flatScanBars, bar_index - 2))
+for i = 0 to maxScan
+    bool flatA = f_nearly_equal(spanA[i], spanA[i + 1]) and f_nearly_equal(spanA[i + 1], spanA[i + 2])
+    bool flatB = f_nearly_equal(spanB[i], spanB[i + 1]) and f_nearly_equal(spanB[i + 1], spanB[i + 2])
+    if flatA
+        float flatLevel = spanA[i]
+        bool uniqueUpper1 = na(targetAbove1) or math.abs(flatLevel - targetAbove1) > syminfo.mintick * 0.25
+        bool uniqueUpper2 = na(targetAbove2) or math.abs(flatLevel - targetAbove2) > syminfo.mintick * 0.25
+        bool uniqueLower1 = na(targetBelow1) or math.abs(flatLevel - targetBelow1) > syminfo.mintick * 0.25
+        bool uniqueLower2 = na(targetBelow2) or math.abs(flatLevel - targetBelow2) > syminfo.mintick * 0.25
+        if flatLevel > close
+            float distAbove = flatLevel - close
+            if (na(targetAbove1Dist) or distAbove < targetAbove1Dist) and uniqueUpper1
+                targetAbove2 := targetAbove1
+                targetAbove2Dist := targetAbove1Dist
+                targetAbove1 := flatLevel
+                targetAbove1Dist := distAbove
+            else if uniqueUpper1 and uniqueUpper2 and (na(targetAbove2Dist) or distAbove < targetAbove2Dist)
+                targetAbove2 := flatLevel
+                targetAbove2Dist := distAbove
+        if flatLevel < close
+            float distBelow = close - flatLevel
+            if (na(targetBelow1Dist) or distBelow < targetBelow1Dist) and uniqueLower1
+                targetBelow2 := targetBelow1
+                targetBelow2Dist := targetBelow1Dist
+                targetBelow1 := flatLevel
+                targetBelow1Dist := distBelow
+            else if uniqueLower1 and uniqueLower2 and (na(targetBelow2Dist) or distBelow < targetBelow2Dist)
+                targetBelow2 := flatLevel
+                targetBelow2Dist := distBelow
+    if flatB
+        float flatLevel = spanB[i]
+        bool uniqueUpper1 = na(targetAbove1) or math.abs(flatLevel - targetAbove1) > syminfo.mintick * 0.25
+        bool uniqueUpper2 = na(targetAbove2) or math.abs(flatLevel - targetAbove2) > syminfo.mintick * 0.25
+        bool uniqueLower1 = na(targetBelow1) or math.abs(flatLevel - targetBelow1) > syminfo.mintick * 0.25
+        bool uniqueLower2 = na(targetBelow2) or math.abs(flatLevel - targetBelow2) > syminfo.mintick * 0.25
+        if flatLevel > close
+            float distAbove = flatLevel - close
+            if (na(targetAbove1Dist) or distAbove < targetAbove1Dist) and uniqueUpper1
+                targetAbove2 := targetAbove1
+                targetAbove2Dist := targetAbove1Dist
+                targetAbove1 := flatLevel
+                targetAbove1Dist := distAbove
+            else if uniqueUpper1 and uniqueUpper2 and (na(targetAbove2Dist) or distAbove < targetAbove2Dist)
+                targetAbove2 := flatLevel
+                targetAbove2Dist := distAbove
+        if flatLevel < close
+            float distBelow = close - flatLevel
+            if (na(targetBelow1Dist) or distBelow < targetBelow1Dist) and uniqueLower1
+                targetBelow2 := targetBelow1
+                targetBelow2Dist := targetBelow1Dist
+                targetBelow1 := flatLevel
+                targetBelow1Dist := distBelow
+            else if uniqueLower1 and uniqueLower2 and (na(targetBelow2Dist) or distBelow < targetBelow2Dist)
+                targetBelow2 := flatLevel
+                targetBelow2Dist := distBelow
+
+var string activeSetup = "None"
+var int activeDir = 0
+var float activeEntryPrice = na
+var float activeTarget = na
+var float activeInvalidation = na
+var bool activeIsEdge = false
+
+bool wasActive = activeDir != 0
+bool activeSignalInvalidated = false
+
+if activeDir == 1
+    activeInvalidation := activeIsEdge ? cloudBottomNow : math.min(kijun, cloudBottomNow)
+    activeTarget := activeIsEdge ? cloudTopNow : activeTarget
+    activeSignalInvalidated := activeIsEdge ? (not na(cloudBottomNow) and close < cloudBottomNow) : (bearishTkCross or (not na(kijun) and close < kijun) or (not na(cloudTopNow) and close <= cloudTopNow))
+else if activeDir == -1
+    activeInvalidation := activeIsEdge ? cloudTopNow : math.max(kijun, cloudTopNow)
+    activeTarget := activeIsEdge ? cloudBottomNow : activeTarget
+    activeSignalInvalidated := activeIsEdge ? (not na(cloudTopNow) and close > cloudTopNow) : (bullishTkCross or (not na(kijun) and close > kijun) or (not na(cloudBottomNow) and close >= cloudBottomNow))
+
+if activeSignalInvalidated
+    activeSetup := "None"
+    activeDir := 0
+    activeEntryPrice := na
+    activeTarget := na
+    activeInvalidation := na
+    activeIsEdge := false
+
+if longChecklist
+    activeSetup := "Checklist Long"
+    activeDir := 1
+    activeEntryPrice := close
+    activeTarget := targetAbove1
+    activeInvalidation := math.min(kijun, cloudBottomNow)
+    activeIsEdge := false
+else if shortChecklist
+    activeSetup := "Checklist Short"
+    activeDir := -1
+    activeEntryPrice := close
+    activeTarget := targetBelow1
+    activeInvalidation := math.max(kijun, cloudTopNow)
+    activeIsEdge := false
+else if longKijun
+    activeSetup := "Kijun Bounce Long"
+    activeDir := 1
+    activeEntryPrice := close
+    activeTarget := targetAbove1
+    activeInvalidation := math.min(kijun, cloudBottomNow)
+    activeIsEdge := false
+else if shortKijun
+    activeSetup := "Kijun Bounce Short"
+    activeDir := -1
+    activeEntryPrice := close
+    activeTarget := targetBelow1
+    activeInvalidation := math.max(kijun, cloudTopNow)
+    activeIsEdge := false
+else if longBreakout
+    activeSetup := "Breakout Long"
+    activeDir := 1
+    activeEntryPrice := close
+    activeTarget := targetAbove1
+    activeInvalidation := math.min(kijun, cloudBottomNow)
+    activeIsEdge := false
+else if shortBreakout
+    activeSetup := "Breakout Short"
+    activeDir := -1
+    activeEntryPrice := close
+    activeTarget := targetBelow1
+    activeInvalidation := math.max(kijun, cloudTopNow)
+    activeIsEdge := false
+else if longEdge
+    activeSetup := "Edge-to-Edge Long"
+    activeDir := 1
+    activeEntryPrice := close
+    activeTarget := cloudTopNow
+    activeInvalidation := cloudBottomNow
+    activeIsEdge := true
+else if shortEdge
+    activeSetup := "Edge-to-Edge Short"
+    activeDir := -1
+    activeEntryPrice := close
+    activeTarget := cloudBottomNow
+    activeInvalidation := cloudTopNow
+    activeIsEdge := true
+
+float dashboardTarget = activeDir == 1 ? activeTarget : activeDir == -1 ? activeTarget : priceState == 1 ? targetAbove1 : priceState == -1 ? targetBelow1 : na
+float dashboardInvalidation = activeDir != 0 ? activeInvalidation : priceState == 1 ? math.min(kijun, cloudBottomNow) : priceState == -1 ? math.max(kijun, cloudTopNow) : na
+string regimeLabel = priceState == 1 ? "Bull" : priceState == -1 ? "Bear" : "Neutral"
+color regimeColor = priceState == 1 ? bullColor : priceState == -1 ? bearColor : neutralColor
+dashboardPosition = f_table_position(dashboardPositionLabel)
+bool useTopSpacer = pushDashboardBelowBanner and (dashboardPositionLabel == POS_TOP_LEFT or dashboardPositionLabel == POS_TOP_RIGHT)
+int dashboardBaseRow = useTopSpacer ? 1 : 0
+float atrValue = math.max(ta.atr(14), syminfo.mintick * 50)
+float guidanceHigh = high
+float guidanceLow = low
+int activeGuidanceX = bar_index + 1
+int standbyGuidanceX = math.max(bar_index - 6, 0)
+int levelTagX = bar_index + 3
+string recommendationHeadline = activeDir == 1 ? "LONG RECOMMENDATION" : activeDir == -1 ? "SHORT RECOMMENDATION" : "NO TRADE RIGHT NOW"
+string recommendationAction = activeDir == 1 ? activeSetup + " is active" : activeDir == -1 ? activeSetup + " is active" : priceState == 1 and htfBullOk and allowLong ? "Watch for breakout, checklist, or kijun bounce" : priceState == -1 and htfBearOk and allowShort ? "Watch for breakdown, checklist, or kijun bounce" : directionFilter == DIR_LONG ? "Wait for bullish cloud alignment" : directionFilter == DIR_SHORT ? "Wait for bearish cloud alignment" : "Wait for full Ichimoku alignment"
+string recommendationEntry = activeDir != 0 ? "Entry: " + f_format_price(activeEntryPrice) : "Entry: wait for next confirmed trigger"
+string recommendationTarget = "Target: " + f_format_price(dashboardTarget)
+string recommendationExit = "Exit: " + f_format_price(dashboardInvalidation)
+string recommendationText = recommendationHeadline + "\n" + recommendationAction + "\n" + recommendationEntry + "\n" + recommendationTarget + "\n" + recommendationExit
+string standbyRecommendationText = recommendationHeadline + "\n" + recommendationAction + "\n" + recommendationEntry
+float guidanceY = activeDir == -1 ? guidanceLow : guidanceHigh
+color guidanceColor = activeDir == 1 ? color.new(bullColor, 0) : activeDir == -1 ? color.new(bearColor, 0) : color.new(color.rgb(69, 78, 91), 0)
+guidanceStyle = label.style_label_left
+string dashboardSignalHeader = activeDir == 0 ? "Trade Call" : "Active Setup"
+string dashboardSignalValue = activeDir == 0 ? recommendationHeadline : activeSetup
+string dashboardLevelsHeader = activeDir == 0 ? "Wait For" : "Execution"
+string dashboardLevelsValue = activeDir == 0 ? recommendationAction : "E " + f_format_price(activeEntryPrice) + " | T " + f_format_price(activeTarget) + " | X " + f_format_price(activeInvalidation)
+string entryTagText = activeDir == 1 ? "ENTRY LONG" : activeDir == -1 ? "ENTRY SHORT" : ""
+color entryTagColor = activeDir == 1 ? bullColor : bearColor
+
+bgcolor(showRegimeShading ? color.new(regimeColor, 90) : na)
+
+plot(tenkan, "Tenkan", color = color.new(bullColor, 0), linewidth = 2)
+plot(kijun, "Kijun", color = color.new(bearColor, 0), linewidth = 2)
+plot(close, "Chikou Span", color = chikouColor, offset = -displacement, linewidth = 1)
+plotCloudA = plot(spanA, "Senkou Span A", color = color.new(bullColor, 0), offset = displacement, linewidth = 1)
+plotCloudB = plot(spanB, "Senkou Span B", color = color.new(bearColor, 0), offset = displacement, linewidth = 1)
+fill(plotCloudA, plotCloudB, color = spanA >= spanB ? color.new(bullColor, 84) : color.new(bearColor, 84), title = "Kumo")
+
+plotshape(showMarkers and not useEnglishMarkers and longBreakout, "Long Breakout Compact", style = shape.triangleup, location = location.belowbar, color = bullColor, size = size.small, text = "BO")
+plotshape(showMarkers and not useEnglishMarkers and shortBreakout, "Short Breakout Compact", style = shape.triangledown, location = location.abovebar, color = bearColor, size = size.small, text = "BO")
+plotshape(showMarkers and not useEnglishMarkers and longChecklist, "Long Checklist Compact", style = shape.circle, location = location.belowbar, color = bullColor, size = size.small, text = "CL")
+plotshape(showMarkers and not useEnglishMarkers and shortChecklist, "Short Checklist Compact", style = shape.circle, location = location.abovebar, color = bearColor, size = size.small, text = "CL")
+plotshape(showMarkers and not useEnglishMarkers and longKijun, "Long Kijun Compact", style = shape.diamond, location = location.belowbar, color = bullColor, size = size.small, text = "KJ")
+plotshape(showMarkers and not useEnglishMarkers and shortKijun, "Short Kijun Compact", style = shape.diamond, location = location.abovebar, color = bearColor, size = size.small, text = "KJ")
+plotshape(showMarkers and not useEnglishMarkers and longEdge, "Long Edge Compact", style = shape.labelup, location = location.belowbar, color = color.new(bullColor, 0), size = size.tiny, text = "E2E")
+plotshape(showMarkers and not useEnglishMarkers and shortEdge, "Short Edge Compact", style = shape.labeldown, location = location.abovebar, color = color.new(bearColor, 0), size = size.tiny, text = "E2E")
+
+plotshape(showMarkers and useEnglishMarkers and longBreakout, "Long Breakout English", style = shape.labelup, location = location.belowbar, color = bullColor, textcolor = color.white, size = size.large, text = "LONG\nBREAKOUT")
+plotshape(showMarkers and useEnglishMarkers and shortBreakout, "Short Breakout English", style = shape.labeldown, location = location.abovebar, color = bearColor, textcolor = color.white, size = size.large, text = "SHORT\nBREAKOUT")
+plotshape(showMarkers and useEnglishMarkers and longChecklist, "Long Checklist English", style = shape.labelup, location = location.belowbar, color = bullColor, textcolor = color.white, size = size.large, text = "LONG\nCHECKLIST")
+plotshape(showMarkers and useEnglishMarkers and shortChecklist, "Short Checklist English", style = shape.labeldown, location = location.abovebar, color = bearColor, textcolor = color.white, size = size.large, text = "SHORT\nCHECKLIST")
+plotshape(showMarkers and useEnglishMarkers and longKijun, "Long Kijun English", style = shape.labelup, location = location.belowbar, color = bullColor, textcolor = color.white, size = size.large, text = "LONG\nBOUNCE")
+plotshape(showMarkers and useEnglishMarkers and shortKijun, "Short Kijun English", style = shape.labeldown, location = location.abovebar, color = bearColor, textcolor = color.white, size = size.large, text = "SHORT\nBOUNCE")
+plotshape(showMarkers and useEnglishMarkers and longEdge, "Long Edge English", style = shape.labelup, location = location.belowbar, color = color.new(bullColor, 0), textcolor = color.white, size = size.large, text = "LONG\nEDGE")
+plotshape(showMarkers and useEnglishMarkers and shortEdge, "Short Edge English", style = shape.labeldown, location = location.abovebar, color = color.new(bearColor, 0), textcolor = color.white, size = size.large, text = "SHORT\nEDGE")
+
+var line upperTargetLine1 = na
+var line upperTargetLine2 = na
+var line lowerTargetLine1 = na
+var line lowerTargetLine2 = na
+var line invalidationLine = na
+var label guidanceLabel = na
+var label standbyGuidanceLabel = na
+var label entryLabel = na
+var label targetLabel = na
+var label exitLabel = na
+
+upperTargetLine1 := f_manage_horizontal_line(upperTargetLine1, showTargets, targetAbove1, color.new(bullColor, 10), line.style_dotted, 2)
+upperTargetLine2 := f_manage_horizontal_line(upperTargetLine2, showTargets, targetAbove2, color.new(bullColor, 35), line.style_dotted, 2)
+lowerTargetLine1 := f_manage_horizontal_line(lowerTargetLine1, showTargets, targetBelow1, color.new(bearColor, 10), line.style_dotted, 2)
+lowerTargetLine2 := f_manage_horizontal_line(lowerTargetLine2, showTargets, targetBelow2, color.new(bearColor, 35), line.style_dotted, 2)
+invalidationLine := f_manage_horizontal_line(invalidationLine, showInvalidation and activeDir != 0, activeInvalidation, color.new(bearColor, 0), line.style_dashed, 3)
+guidanceLabel := f_manage_price_label(guidanceLabel, showTradeGuidance and activeDir != 0, activeGuidanceX, guidanceY, recommendationText, guidanceStyle, guidanceColor, color.white, size.huge)
+standbyGuidanceLabel := f_manage_abovebar_label(standbyGuidanceLabel, showTradeGuidance and activeDir == 0, standbyGuidanceX, standbyRecommendationText, label.style_label_left, color.new(color.rgb(69, 78, 91), 0), color.white, size.large)
+entryLabel := f_manage_price_label(entryLabel, showTradeGuidance and showLevelTags and activeDir != 0, levelTagX, activeEntryPrice, entryTagText, label.style_label_left, entryTagColor, color.white, size.large)
+targetLabel := f_manage_price_label(targetLabel, showTradeGuidance and showLevelTags and activeDir != 0, levelTagX, activeTarget, "TARGET", label.style_label_left, activeDir == 1 ? color.new(bullColor, 0) : color.new(bearColor, 0), color.white, size.large)
+exitLabel := f_manage_price_label(exitLabel, showTradeGuidance and showLevelTags and activeDir != 0, levelTagX, activeInvalidation, "EXIT / INVALIDATION", label.style_label_left, color.new(bearColor, 0), color.white, size.large)
+
+var table dashboard = table.new(dashboardPosition, 2, 9, frame_color = color.new(color.white, 80), border_width = 1)
+if barstate.islast
+    if showDashboard
+        table.cell(dashboard, 0, 0, f_spacer_text(useTopSpacer), text_color = color.white, bgcolor = na, text_size = size.large)
+        table.cell(dashboard, 1, 0, f_spacer_text(useTopSpacer), text_color = color.white, bgcolor = na, text_size = size.large)
+        table.cell(dashboard, 0, dashboardBaseRow + 0, "Metric", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(dashboard, 1, dashboardBaseRow + 0, "Value", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(dashboard, 0, dashboardBaseRow + 1, "Chart", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(dashboard, 1, dashboardBaseRow + 1, syminfo.ticker + " @" + timeframe.period, text_color = color.white, bgcolor = dashboardBg)
+        table.cell(dashboard, 0, dashboardBaseRow + 2, "Preset", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(dashboard, 1, dashboardBaseRow + 2, preset + " (" + str.tostring(conversionLength) + "/" + str.tostring(baseLength) + "/" + str.tostring(spanBLength) + "/" + str.tostring(displacement) + ")", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(dashboard, 0, dashboardBaseRow + 3, "CTF Score", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(dashboard, 1, dashboardBaseRow + 3, str.tostring(ctfScore), text_color = ctfScore > 0 ? bullColor : ctfScore < 0 ? bearColor : neutralColor, bgcolor = dashboardBg)
+        table.cell(dashboard, 0, dashboardBaseRow + 4, "HTF Score", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(dashboard, 1, dashboardBaseRow + 4, str.tostring(htfScore) + " @" + htfTimeframe, text_color = htfScore > 0 ? bullColor : htfScore < 0 ? bearColor : neutralColor, bgcolor = dashboardBg)
+        table.cell(dashboard, 0, dashboardBaseRow + 5, "Regime", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(dashboard, 1, dashboardBaseRow + 5, regimeLabel, text_color = regimeColor, bgcolor = dashboardBg)
+        table.cell(dashboard, 0, dashboardBaseRow + 6, dashboardSignalHeader, text_color = color.white, bgcolor = guidanceColor)
+        table.cell(dashboard, 1, dashboardBaseRow + 6, dashboardSignalValue, text_color = color.white, bgcolor = guidanceColor, text_size = size.large)
+        table.cell(dashboard, 0, dashboardBaseRow + 7, dashboardLevelsHeader, text_color = color.white, bgcolor = guidanceColor)
+        table.cell(dashboard, 1, dashboardBaseRow + 7, dashboardLevelsValue, text_color = color.white, bgcolor = guidanceColor)
+        if not useTopSpacer
+            table.cell(dashboard, 0, 8, "", bgcolor = na)
+            table.cell(dashboard, 1, 8, "", bgcolor = na)
+    else
+        table.cell(dashboard, 0, 0, "", bgcolor = na)
+        table.cell(dashboard, 1, 0, "", bgcolor = na)
+        table.cell(dashboard, 0, 1, "", bgcolor = na)
+        table.cell(dashboard, 1, 1, "", bgcolor = na)
+        table.cell(dashboard, 0, 2, "", bgcolor = na)
+        table.cell(dashboard, 1, 2, "", bgcolor = na)
+        table.cell(dashboard, 0, 3, "", bgcolor = na)
+        table.cell(dashboard, 1, 3, "", bgcolor = na)
+        table.cell(dashboard, 0, 4, "", bgcolor = na)
+        table.cell(dashboard, 1, 4, "", bgcolor = na)
+        table.cell(dashboard, 0, 5, "", bgcolor = na)
+        table.cell(dashboard, 1, 5, "", bgcolor = na)
+        table.cell(dashboard, 0, 6, "", bgcolor = na)
+        table.cell(dashboard, 1, 6, "", bgcolor = na)
+        table.cell(dashboard, 0, 7, "", bgcolor = na)
+        table.cell(dashboard, 1, 7, "", bgcolor = na)
+        table.cell(dashboard, 0, 8, "", bgcolor = na)
+        table.cell(dashboard, 1, 8, "", bgcolor = na)
+
+alertcondition(longBreakout, "Long Breakout Confirmed", "Long Breakout Confirmed")
+alertcondition(shortBreakout, "Short Breakout Confirmed", "Short Breakout Confirmed")
+alertcondition(longChecklist, "Long Checklist Confirmed", "Long Checklist Confirmed")
+alertcondition(shortChecklist, "Short Checklist Confirmed", "Short Checklist Confirmed")
+alertcondition(longKijun, "Long Kijun Bounce Confirmed", "Long Kijun Bounce Confirmed")
+alertcondition(shortKijun, "Short Kijun Bounce Confirmed", "Short Kijun Bounce Confirmed")
+alertcondition(longEdge, "Long Edge-to-Edge Active", "Long Edge-to-Edge Active")
+alertcondition(shortEdge, "Short Edge-to-Edge Active", "Short Edge-to-Edge Active")
+alertcondition(wasActive and activeSignalInvalidated, "Active Signal Invalidated", "Active Signal Invalidated")
