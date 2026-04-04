@@ -11,6 +11,10 @@ string DIR_BOTH = "Both"
 string DIR_LONG = "Long Only"
 string DIR_SHORT = "Short Only"
 
+string WINDOW_ALL = "All-Time"
+string WINDOW_3Y = "Last 3 Years"
+string WINDOW_CUSTOM = "Custom"
+
 string POS_TOP_LEFT = "Top Left"
 string POS_TOP_RIGHT = "Top Right"
 string POS_BOTTOM_LEFT = "Bottom Left"
@@ -19,6 +23,7 @@ string POS_BOTTOM_RIGHT = "Bottom Right"
 string GROUP_ICHI = "Ichimoku"
 string GROUP_SIGNAL = "Signals"
 string GROUP_DISPLAY = "Display"
+string GROUP_BACKTEST = "Backtest"
 
 string preset = input.string(PRESET_CRYPTO, "Preset", options = [PRESET_CRYPTO, PRESET_TRAD_STD, PRESET_TRAD_DBL, PRESET_CUSTOM], group = GROUP_ICHI)
 int customConversion = input.int(20, "Custom Conversion", minval = 1, group = GROUP_ICHI)
@@ -38,6 +43,10 @@ bool showRegimeShading = input.bool(true, "Show Regime Shading", group = GROUP_D
 bool showValidationDashboard = input.bool(true, "Show Validation Dashboard", group = GROUP_DISPLAY)
 string validationPositionLabel = input.string(POS_TOP_RIGHT, "Validation Position", options = [POS_TOP_LEFT, POS_TOP_RIGHT, POS_BOTTOM_LEFT, POS_BOTTOM_RIGHT], group = GROUP_DISPLAY)
 bool pushValidationBelowBanner = input.bool(true, "Push Validation Below Banner", group = GROUP_DISPLAY)
+
+string backtestWindowMode = input.string(WINDOW_ALL, "Backtest Window", options = [WINDOW_ALL, WINDOW_3Y, WINDOW_CUSTOM], group = GROUP_BACKTEST)
+int customWindowStart = input.time(timestamp("2023-01-01T00:00:00"), "Custom Start", group = GROUP_BACKTEST)
+int customWindowEnd = input.time(timestamp("2026-01-01T00:00:00"), "Custom End", group = GROUP_BACKTEST)
 
 color bullColor = color.rgb(32, 178, 170)
 color bearColor = color.rgb(183, 92, 70)
@@ -131,6 +140,18 @@ f_allow_long(_filter) =>
 f_allow_short(_filter) =>
     _filter != DIR_LONG
 
+f_backtest_window(_mode, _customStart, _customEnd) =>
+    int startValue = na
+    int endValue = na
+    int threeYearsMs = 94608000000
+    if _mode == WINDOW_3Y
+        endValue := timenow
+        startValue := timenow - threeYearsMs
+    else if _mode == WINDOW_CUSTOM
+        startValue := math.min(_customStart, _customEnd)
+        endValue := math.max(_customStart, _customEnd)
+    [startValue, endValue]
+
 f_table_position(_label) =>
     _label == POS_TOP_LEFT ? position.top_left : _label == POS_BOTTOM_LEFT ? position.bottom_left : _label == POS_BOTTOM_RIGHT ? position.bottom_right : position.top_right
 
@@ -198,6 +219,7 @@ f_alert_json(_scriptName, _direction, _setup, _scoreCtf, _scoreHtf, _price, _kij
     payload := payload + "\"symbol\":\"" + syminfo.ticker + "\","
     payload := payload + "\"timeframe\":\"" + timeframe.period + "\","
     payload := payload + "\"preset\":\"" + preset + "\","
+    payload := payload + "\"window\":\"" + backtestWindowMode + "\","
     payload := payload + "\"direction\":\"" + _direction + "\","
     payload := payload + "\"setup\":\"" + _setup + "\","
     payload := payload + "\"score_ctf\":" + str.tostring(_scoreCtf) + ","
@@ -232,6 +254,11 @@ int htfFutureState = request.security(syminfo.tickerid, htfTimeframe, f_future_s
 int htfTkState = request.security(syminfo.tickerid, htfTimeframe, f_tk_state(conversionLength, baseLength)[1], lookahead = barmerge.lookahead_on)
 int htfChikouState = request.security(syminfo.tickerid, htfTimeframe, f_chikou_state(conversionLength, baseLength, spanBLength, displacement)[1], lookahead = barmerge.lookahead_on)
 int htfScore = htfPriceState + htfFutureState + htfTkState + htfChikouState
+
+[windowStart, windowEnd] = f_backtest_window(backtestWindowMode, customWindowStart, customWindowEnd)
+bool windowEnabled = backtestWindowMode != WINDOW_ALL
+bool inBacktestWindow = not windowEnabled or (not na(windowStart) and not na(windowEnd) and time >= windowStart and time <= windowEnd)
+bool forceWindowExit = strategy.position_size != 0 and windowEnabled and not inBacktestWindow
 
 bool allowLong = f_allow_long(directionFilter)
 bool allowShort = f_allow_short(directionFilter)
@@ -269,16 +296,16 @@ string shortEntryMessage = f_alert_json("MMT Ichi Workflow Strategy", "short", s
 string longExitMessage = f_alert_json("MMT Ichi Workflow Strategy", "exit_long", "Invalidation", ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
 string shortExitMessage = f_alert_json("MMT Ichi Workflow Strategy", "exit_short", "Invalidation", ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
 
-bool canEnterLong = allowLong and strategy.position_size == 0 and longSetup != ""
-bool canEnterShort = allowShort and strategy.position_size == 0 and shortSetup != ""
+bool canEnterLong = inBacktestWindow and allowLong and strategy.position_size == 0 and longSetup != ""
+bool canEnterShort = inBacktestWindow and allowShort and strategy.position_size == 0 and shortSetup != ""
 
 if canEnterLong
     strategy.entry(longOrderId, strategy.long, alert_message = longEntryMessage)
 else if canEnterShort
     strategy.entry(shortOrderId, strategy.short, alert_message = shortEntryMessage)
 
-bool exitLong = strategy.position_size > 0 and (bearishTkCross or (not na(kijun) and close < kijun) or (not na(cloudTopNow) and close <= cloudTopNow))
-bool exitShort = strategy.position_size < 0 and (bullishTkCross or (not na(kijun) and close > kijun) or (not na(cloudBottomNow) and close >= cloudBottomNow))
+bool exitLong = strategy.position_size > 0 and (forceWindowExit or bearishTkCross or (not na(kijun) and close < kijun) or (not na(cloudTopNow) and close <= cloudTopNow))
+bool exitShort = strategy.position_size < 0 and (forceWindowExit or bullishTkCross or (not na(kijun) and close > kijun) or (not na(cloudBottomNow) and close >= cloudBottomNow))
 
 if exitLong
     strategy.close("L_BREAKOUT", comment = "Long Invalidation", alert_message = longExitMessage)
@@ -319,7 +346,7 @@ float maxDrawdownPercent = strategy.max_drawdown_percent
 int closedTrades = int(strategy.closedtrades)
 float winRate = closedTrades > 0 ? strategy.wintrades / strategy.closedtrades * 100.0 : na
 string moduleSummary = f_module_summary(enableBreakout, enableChecklist, enableKijun)
-string modelSummary = preset + " / " + directionFilter + " / HTF " + htfTimeframe
+string modelSummary = preset + " / " + directionFilter + " / HTF " + htfTimeframe + " / " + backtestWindowMode
 bool thinData = closedTrades < 5
 bool avoidTicker = closedTrades == 0 or netProfitPercent <= 0 or profitFactor < 1.15 or maxDrawdownPercent > 50
 bool cautionTicker = thinData or profitFactor < 1.75 or maxDrawdownPercent > 35 or winRate < 25

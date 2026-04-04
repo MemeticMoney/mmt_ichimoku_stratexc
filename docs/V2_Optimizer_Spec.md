@@ -1,8 +1,8 @@
 # V2 Optimizer Design Spec
 
-This document defines the proposed V2 optimizer workflow for the `MMT Ichi Workflow Strategy`.
+This document defines the V2 optimizer workflow for the `MMT Ichi Workflow Strategy`.
 
-The goal is not to build the optimizer yet. The goal is to agree on the design before implementation.
+The goal is to build a local optimizer harness that can run structured cloud-setting trials through TradingView and surface the strongest settings per ticker, timeframe, window, and direction mode.
 
 ## Objective
 
@@ -11,8 +11,9 @@ Use the strategy layer to run repeated, structured backtests and answer:
 - which cloud settings perform best on a given ticker
 - which settings are best `all-time`
 - which settings are best over the `last 3 years`
-- which settings are strongest on each timeframe from `4H` through `1W`
+- which settings are strongest on each timeframe from `15m` through `1W`
 - which settings are `best` versus which settings are `most robust`
+- which settings are strongest for `Long Only`, `Short Only`, and `Both`
 
 ## Why V2 Should Be External
 
@@ -39,10 +40,16 @@ This is the right split because Pine is excellent at strategy logic, but poor at
 - Optimize `cloud settings` only
 - Run tests per `ticker`
 - Run tests on:
+  - `15m`
+  - `1H`
   - `4H`
   - `1D`
   - `3D`
   - `1W`
+- Run tests across direction modes:
+  - `Long Only`
+  - `Short Only`
+  - `Both`
 - Produce two result families:
   - `All-Time Best`
   - `Last 3 Years Best`
@@ -57,15 +64,11 @@ This is the right split because Pine is excellent at strategy logic, but poor at
   - `Breakout`
   - `Checklist`
   - `Kijun Bounce`
-- Optimizing direction mode
-  - `Long Only`
-  - `Both`
-  - `Short Only`
 - Optimizing commission, slippage, or sizing
 - Optimizing target or invalidation formulas
 - Rewriting the cloud model itself
 
-My recommendation is to isolate `cloud settings` first and keep the rest fixed.
+Direction mode is part of the test matrix in V2, but it is not part of the parameter search itself. We still isolate `cloud settings` first and keep the rest fixed.
 
 ## Fixed Variables for V2.0
 
@@ -73,7 +76,6 @@ These should stay fixed during the first optimizer build:
 
 | Variable | Recommended Fixed Value |
 | --- | --- |
-| Direction filter | `Long Only` |
 | Enabled modules | `Breakout + Checklist + Kijun Bounce` |
 | Position sizing | `75% of equity` |
 | Commission | `0.1%` |
@@ -87,7 +89,13 @@ Why:
 - It avoids confounding cloud optimization with other model changes
 - It matches the current validated production profile
 
-If cloud optimization works well, we can later run a separate V2.1 to compare `Long Only` vs `Both`.
+Direction mode should still be tested as three separate run families:
+
+- `Long Only`
+- `Short Only`
+- `Both`
+
+That gives us three parallel result sets without turning direction into another optimizer variable.
 
 ## What Counts as “Cloud Settings”
 
@@ -157,7 +165,8 @@ For each ticker, the optimizer should test:
 
 | Dimension | Values |
 | --- | --- |
-| Timeframes | `4H`, `1D`, `3D`, `1W` |
+| Timeframes | `15m`, `1H`, `4H`, `1D`, `3D`, `1W` |
+| Direction modes | `Long Only`, `Short Only`, `Both` |
 | Windows | `All-Time`, `Last 3 Years` |
 | Cloud candidates | Phase 1 presets, then Phase 2 custom candidates |
 
@@ -194,6 +203,12 @@ Recommended future strategy inputs:
 
 Without this, the optimizer would have to rely on chart-history or visible-range workarounds, which is much less reliable.
 
+This requirement is now satisfied in the local V2 branch by adding:
+
+- `Backtest Window`
+- `Custom Start`
+- `Custom End`
+
 ## Higher Timeframe Policy
 
 The optimizer should not optimize HTF selection in V2.0. It should use a fixed mapping.
@@ -202,6 +217,8 @@ Recommended default map:
 
 | Base Timeframe | HTF |
 | --- | --- |
+| `15m` | `1H` |
+| `1H` | `4H` |
 | `4H` | `1D` |
 | `1D` | `1W` |
 | `3D` | `1W` |
@@ -237,6 +254,8 @@ Suggested default thresholds:
 | Last 3 Years | `6` | `40%` |
 
 If a ticker produces no passing candidates, the optimizer can log that and optionally retry with a relaxed fallback drawdown cap.
+
+These gates should remain configurable in the harness so we can raise them later for lower timeframes if needed.
 
 ## Ranking Logic
 

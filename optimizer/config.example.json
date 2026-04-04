@@ -1,0 +1,121 @@
+{
+  "strategyName": "MMT Ichi Workflow Strategy",
+  "strategyPath": "../pine/Ichi_Workflow_Strategy.pine",
+  "outputDir": "./output",
+  "symbols": [
+    "COINBASE:BTCUSD",
+    "COINBASE:ETHUSD"
+  ],
+  "timeframes": [
+    "W",
+    "3D",
+    "D",
+    "240",
+    "60",
+    "15"
+  ],
+  "directionModes": [
+    "Long Only",
+    "Short Only",
+    "Both"
+  ],
+  "windows": [
+    "All-Time",
+    "Last 3 Years"
+  ],
+  "higherTimeframeMap": {
+    "15": "60",
+    "60": "240",
+    "240": "D",
+    "D": "W",
+    "3D": "W",
+    "W": "M"
+  },
+  "delaysMs": {
+    "afterChartChange": 1500,
+    "afterInputChange": 1500,
+    "betweenRetries": 1000
+  },
+  "metricRetries": 6,
+  "fixedInputs": {
+    "enableBreakout": true,
+    "enableChecklist": true,
+    "enableKijun": true,
+    "showMarkers": false,
+    "showInvalidation": false,
+    "showRegimeShading": false,
+    "showValidationDashboard": true,
+    "validationPositionLabel": "Top Right",
+    "pushValidationBelowBanner": true
+  },
+  "qualityGates": {
+    "All-Time": {
+      "minimumTrades": 10,
+      "maxDrawdownPct": 40,
+      "requirePositiveNetProfit": true,
+      "maxMarginCalls": 0
+    },
+    "Last 3 Years": {
+      "minimumTrades": 6,
+      "maxDrawdownPct": 40,
+      "requirePositiveNetProfit": true,
+      "maxMarginCalls": 0
+    }
+  },
+  "phase1": {
+    "presetNames": [
+      "Traditional Standard",
+      "Traditional Doubled",
+      "Crypto Doubled"
+    ]
+  },
+  "phase2": {
+    "enabled": true,
+    "maxPresetSeedsPerGroup": 2,
+    "neighborhoodOffsets": {
+      "conversion": [
+        -4,
+        0,
+        4
+      ],
+      "base": [
+        -12,
+        0,
+        12
+      ],
+      "spanB": [
+        -24,
+        0,
+        24
+      ],
+      "displacement": [
+        -6,
+        0,
+        6
+      ]
+    },
+    "bounds": {
+      "conversion": {
+        "min": 5,
+        "max": 40
+      },
+      "base": {
+        "min": 10,
+        "max": 160
+      },
+      "spanB": {
+        "min": 20,
+        "max": 320
+      },
+      "displacement": {
+        "min": 5,
+        "max": 80
+      },
+      "baseMinusConversionMin": 6,
+      "spanBMinusBaseMin": 10
+    }
+  },
+  "reports": {
+    "includeRawMetrics": false
+  }
+}
