@@ -37,6 +37,7 @@
     "betweenRetries": 1000
   },
   "metricRetries": 6,
+  "checkpointEveryRuns": 12,
   "fixedInputs": {
     "enableBreakout": true,
     "enableChecklist": true,

@@ -149,3 +149,31 @@ export function writeOptimizerArtifacts({
 
   fs.writeFileSync(path.join(outputDir, 'summary.md'), `${summaryLines.join('\n')}\n`, 'utf8');
 }
+
+export function writeCheckpointArtifacts({
+  outputRoot,
+  config,
+  phase1SeedMap,
+  allResults,
+  bestSettingSummaries,
+  robustSettingSummaries,
+  startedAt,
+  finishedAt,
+  progress,
+}) {
+  const checkpointDir = path.join(outputRoot, '_latest');
+  ensureDirectory(checkpointDir);
+
+  writeOptimizerArtifacts({
+    outputDir: checkpointDir,
+    config,
+    phase1SeedMap,
+    allResults,
+    bestSettingSummaries,
+    robustSettingSummaries,
+    startedAt,
+    finishedAt,
+  });
+
+  writeJson(path.join(checkpointDir, 'progress.json'), progress);
+}

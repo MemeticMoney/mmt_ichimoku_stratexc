@@ -22,6 +22,7 @@ import {
   setChartContext,
 } from './lib/tv-session.mjs';
 import { writeOptimizerArtifacts } from './lib/reporting.mjs';
+import { writeCheckpointArtifacts } from './lib/reporting.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,12 +82,10 @@ function loadConfig(configPath) {
 }
 
 function resolveConfigPath(configDirectory, filePath) {
-  const configRelativePath = path.resolve(configDirectory, filePath);
-  if (fs.existsSync(configRelativePath)) {
-    return configRelativePath;
+  if (path.isAbsolute(filePath)) {
+    return filePath;
   }
-
-  return path.resolve(projectRoot, filePath);
+  return path.resolve(configDirectory, filePath);
 }
 
 function makeRunId() {
@@ -131,11 +130,22 @@ function robustSeedGroupKey(symbol, directionMode, windowMode) {
   return [symbol, directionMode, windowMode].join('|');
 }
 
+function calculateTotalRuns({ config, candidateCount }) {
+  return config.symbols.length
+    * config.timeframes.length
+    * config.directionModes.length
+    * config.windows.length
+    * candidateCount;
+}
+
 async function executeRuns({
   phase,
   config,
   inputIdMap,
   candidatesForGroup,
+  expectedRuns,
+  checkpointEveryRuns,
+  onCheckpoint,
   maxRuns,
 }) {
   const results = [];
@@ -144,12 +154,18 @@ async function executeRuns({
   for (const symbol of config.symbols) {
     for (const timeframe of config.timeframes) {
       const htfTimeframe = resolveHigherTimeframe(config.higherTimeframeMap, timeframe);
-      const strategyStudy = await setChartContext({
-        strategyName: config.strategyName,
-        symbol,
-        timeframe,
-        delaysMs: config.delaysMs,
-      });
+      let strategyStudy;
+      try {
+        strategyStudy = await setChartContext({
+          strategyName: config.strategyName,
+          symbol,
+          timeframe,
+          delaysMs: config.delaysMs,
+        });
+      } catch (error) {
+        console.error(`Skipping ${symbol} ${timeframe}: ${error.message}`);
+        continue;
+      }
 
       for (const directionMode of config.directionModes) {
         for (const windowMode of config.windows) {
@@ -166,7 +182,7 @@ async function executeRuns({
             runCounter += 1;
             const prefix = logRunPrefix(
               runCounter,
-              maxRuns,
+              maxRuns ?? expectedRuns,
               phase,
               symbol,
               timeframe,
@@ -185,18 +201,35 @@ async function executeRuns({
               fixedInputs: config.fixedInputs,
             });
 
-            await applyStrategyInputs({
-              entityId: strategyStudy.id,
-              inputs,
-              delaysMs: config.delaysMs,
-            });
+            let rawMetrics;
+            let metrics;
+            let quality;
+            try {
+              await applyStrategyInputs({
+                entityId: strategyStudy.id,
+                inputs,
+                delaysMs: config.delaysMs,
+              });
 
-            const rawMetrics = await readStrategyResults({
-              retries: config.metricRetries,
-              delaysMs: config.delaysMs,
-            });
-            const metrics = extractNormalizedMetrics(rawMetrics.metrics);
-            const quality = evaluateQuality(metrics, config.qualityGates, windowMode);
+              rawMetrics = await readStrategyResults({
+                retries: config.metricRetries,
+                delaysMs: config.delaysMs,
+              });
+              metrics = extractNormalizedMetrics(rawMetrics.metrics);
+              quality = evaluateQuality(metrics, config.qualityGates, windowMode);
+            } catch (error) {
+              console.error(`Run failed for ${prefix}: ${error.message}`);
+              rawMetrics = {
+                metric_count: 0,
+                metrics: {},
+                error: error.message,
+              };
+              metrics = extractNormalizedMetrics(rawMetrics.metrics);
+              quality = {
+                pass: false,
+                failures: [error.message],
+              };
+            }
 
             results.push({
               phase,
@@ -220,6 +253,15 @@ async function executeRuns({
               ...metrics,
               ...(config.reports?.includeRawMetrics ? { rawMetrics: rawMetrics.metrics } : {}),
             });
+
+            if (checkpointEveryRuns > 0 && runCounter % checkpointEveryRuns === 0) {
+              await onCheckpoint?.({
+                phase,
+                completedRuns: runCounter,
+                expectedRuns,
+                results,
+              });
+            }
           }
         }
       }
@@ -257,10 +299,42 @@ async function main() {
   await ensureStrategySession(config.strategyName);
 
   const phase1Candidates = buildPresetCandidates(config.phase1?.presetNames);
+  const phase1ExpectedRuns = calculateTotalRuns({
+    config,
+    candidateCount: phase1Candidates.length,
+  });
+  const checkpointEveryRuns = config.checkpointEveryRuns ?? 0;
+  const makeCheckpoint = async ({ phase, completedRuns, expectedRuns, results }) => {
+    const bestSettingSummaries = buildBestSettingSummaries(results);
+    const robustSettingSummaries = buildRobustSettingSummaries(results);
+    writeCheckpointArtifacts({
+      outputRoot,
+      config,
+      phase1SeedMap: phase === 'phase1' ? {} : buildPhase1SeedMap(results.filter((result) => result.phase === 'phase1'), {
+        maxSeeds: config.phase2?.maxPresetSeedsPerGroup ?? 2,
+      }),
+      allResults: results,
+      bestSettingSummaries,
+      robustSettingSummaries,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      progress: {
+        phase,
+        completedRuns,
+        expectedRuns,
+        symbolsCompletedApprox: Math.floor(
+          completedRuns / (config.timeframes.length * config.directionModes.length * config.windows.length * phase1Candidates.length)
+        ),
+      },
+    });
+  };
   const phase1Results = await executeRuns({
     phase: 'phase1',
     config,
     inputIdMap,
+    expectedRuns: phase1ExpectedRuns,
+    checkpointEveryRuns,
+    onCheckpoint: makeCheckpoint,
     maxRuns: args.maxRuns,
     candidatesForGroup: () => phase1Candidates,
   });
@@ -280,6 +354,17 @@ async function main() {
         phase: 'phase2',
         config,
         inputIdMap,
+        expectedRuns: null,
+        checkpointEveryRuns,
+        onCheckpoint: async ({ phase, completedRuns, results }) => {
+          const mergedResults = [...phase1Results, ...results];
+          await makeCheckpoint({
+            phase,
+            completedRuns: phase1Results.length + completedRuns,
+            expectedRuns: null,
+            results: mergedResults,
+          });
+        },
         maxRuns: phase2Budget,
         candidatesForGroup: ({ symbol, directionMode, windowMode }) => {
           const groupKey = robustSeedGroupKey(symbol, directionMode, windowMode);
