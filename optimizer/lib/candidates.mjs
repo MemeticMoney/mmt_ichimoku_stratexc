@@ -39,6 +39,10 @@ function makePresetCandidate(presetName) {
   };
 }
 
+export function buildPresetCandidate(presetName) {
+  return makePresetCandidate(presetName);
+}
+
 function clampBounds(value, bounds = {}) {
   if (typeof bounds.min === 'number' && value < bounds.min) {
     return null;
@@ -87,28 +91,53 @@ export function buildPresetCandidates(presetNames = Object.keys(PRESET_DEFINITIO
   return presetNames.map(makePresetCandidate);
 }
 
+function getNeighborhoodValues(seed, phase2Config, field) {
+  const neighborhood = phase2Config.neighborhoods?.[seed.presetName]
+    ?? phase2Config.neighborhoods?.[seed.label]
+    ?? null;
+
+  const explicitValues = neighborhood?.[field];
+  if (Array.isArray(explicitValues) && explicitValues.length > 0) {
+    return explicitValues;
+  }
+
+  const offsets = phase2Config.neighborhoodOffsets?.[field];
+  if (Array.isArray(offsets) && offsets.length > 0) {
+    return offsets.map((offset) => seed[field] + offset);
+  }
+
+  return [seed[field]];
+}
+
 export function buildNeighborhoodCandidates(seedCandidates, phase2Config = {}) {
-  const offsets = phase2Config.neighborhoodOffsets ?? {
-    conversion: [-4, 0, 4],
-    base: [-12, 0, 12],
-    spanB: [-24, 0, 24],
-    displacement: [-6, 0, 6],
-  };
   const bounds = phase2Config.bounds ?? {};
   const deduped = new Map();
+  const includeSeedPreset = phase2Config.includeSeedPreset ?? true;
 
   for (const seed of seedCandidates) {
-    for (const conversionOffset of offsets.conversion ?? [0]) {
-      for (const baseOffset of offsets.base ?? [0]) {
-        for (const spanBOffset of offsets.spanB ?? [0]) {
-          for (const displacementOffset of offsets.displacement ?? [0]) {
+    if (includeSeedPreset && seed.family === 'preset') {
+      const presetKey = candidateKey(seed);
+      if (!deduped.has(presetKey)) {
+        deduped.set(presetKey, seed);
+      }
+    }
+
+    const conversionValues = getNeighborhoodValues(seed, phase2Config, 'conversion');
+    const baseValues = getNeighborhoodValues(seed, phase2Config, 'base');
+    const spanBValues = getNeighborhoodValues(seed, phase2Config, 'spanB');
+    const displacementValues = getNeighborhoodValues(seed, phase2Config, 'displacement');
+
+    for (const conversion of conversionValues) {
+      for (const base of baseValues) {
+        for (const spanB of spanBValues) {
+          for (const displacement of displacementValues) {
             const rawCandidate = {
               family: 'custom',
               presetName: 'Custom',
-              conversion: seed.conversion + conversionOffset,
-              base: seed.base + baseOffset,
-              spanB: seed.spanB + spanBOffset,
-              displacement: seed.displacement + displacementOffset,
+              conversion,
+              base,
+              spanB,
+              displacement,
               seedLabel: seed.label,
             };
             const boundedCandidate = applyBounds(rawCandidate, bounds);
@@ -117,11 +146,13 @@ export function buildNeighborhoodCandidates(seedCandidates, phase2Config = {}) {
             }
 
             const key = candidateKey(boundedCandidate);
-            deduped.set(key, {
-              ...boundedCandidate,
-              id: `custom:${key}`,
-              label: `Custom (${formatCandidateLabel(boundedCandidate)})`,
-            });
+            if (!deduped.has(key)) {
+              deduped.set(key, {
+                ...boundedCandidate,
+                id: `custom:${key}`,
+                label: `Custom (${formatCandidateLabel(boundedCandidate)})`,
+              });
+            }
           }
         }
       }
@@ -129,9 +160,14 @@ export function buildNeighborhoodCandidates(seedCandidates, phase2Config = {}) {
   }
 
   return [...deduped.values()].sort((left, right) =>
-    left.conversion - right.conversion
+    (left.family === 'preset' ? -1 : 0) - (right.family === 'preset' ? -1 : 0)
+    || left.conversion - right.conversion
     || left.base - right.base
     || left.spanB - right.spanB
     || left.displacement - right.displacement
   );
+}
+
+export function presetDefinitions() {
+  return { ...PRESET_DEFINITIONS };
 }

@@ -49,7 +49,7 @@ V2 keeps these fixed:
 3. Add `MMT Ichi Workflow Strategy` to the chart.
 4. Make sure the local `tradingview-mcp` checkout is available at:
    - `/Users/stubookpro/Desktop/mmt_ichi/tradingview-mcp`
-5. Edit [config.example.json](/Users/stubookpro/Desktop/mmt_ichi/public_repo/optimizer/config.example.json) with the ticker universe you want to test first.
+5. Edit [config.example.json](/Users/stubookpro/Desktop/mmt_ichi/public_repo/optimizer/config.example.json) for a small smoke run, or start from [phase2.example.json](/Users/stubookpro/Desktop/mmt_ichi/public_repo/optimizer/phase2.example.json) when you want the symbol-aware Phase 2 pass.
 
 ## Run It
 
@@ -61,8 +61,22 @@ Helpful options:
 
 ```bash
 node optimizer/run_optimizer.mjs --config optimizer/config.example.json --phase phase1
+node optimizer/run_optimizer.mjs --config optimizer/phase2.example.json --phase phase2
 node optimizer/run_optimizer.mjs --config optimizer/config.example.json --max-runs 10
 ```
+
+Phase behavior:
+
+- `--phase phase1`: runs only the preset sweep
+- `--phase phase2`: runs only the custom neighborhood search
+- `--phase full`: runs Phase 1 first, then Phase 2
+
+Phase 2 can run in two ways:
+
+- from a `symbolPlanPath`, which tells the optimizer which symbols, timeframes, branches, and seed families matter most
+- from the Phase 1 seed winners generated during a full run
+
+The example symbol plan lives at [phase2-symbol-plan.example.json](/Users/stubookpro/Desktop/mmt_ichi/public_repo/optimizer/phase2-symbol-plan.example.json).
 
 ## Output
 
@@ -74,6 +88,8 @@ Each run writes a timestamped folder under `optimizer/output/` containing:
 - `best-settings.csv`
 - `robust-settings.csv`
 - `phase1-seeds.json`
+
+Phase 2 runs also reflect the symbol plan filters, so they will usually produce far fewer runs than a full Cartesian search.
 
 ## Notes
 

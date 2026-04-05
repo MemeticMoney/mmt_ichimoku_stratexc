@@ -1,10 +1,31 @@
 {
   "strategyName": "MMT Ichi Workflow Strategy",
   "strategyPath": "../pine/Ichi_Workflow_Strategy.pine",
-  "outputDir": "./output",
+  "outputDir": "./output/phase2",
   "symbols": [
     "COINBASE:BTCUSD",
-    "COINBASE:ETHUSD"
+    "COINBASE:ETHUSD",
+    "COINBASE:SOLUSD",
+    "DBC",
+    "EEM",
+    "EFA",
+    "EMB",
+    "GLD",
+    "HYG",
+    "IEF",
+    "IWM",
+    "IYR",
+    "KRE",
+    "LQD",
+    "MUB",
+    "SHY",
+    "SPY",
+    "TIP",
+    "TLT",
+    "UUP",
+    "XHB",
+    "XLE",
+    "XLF"
   ],
   "timeframes": [
     "W",
@@ -36,7 +57,7 @@
     "afterInputChange": 1500,
     "betweenRetries": 1000
   },
-  "metricRetries": 6,
+  "metricRetries": 8,
   "checkpointEveryRuns": 12,
   "fixedInputs": {
     "enableBreakout": true,

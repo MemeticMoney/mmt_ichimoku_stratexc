@@ -1,0 +1,145 @@
+{
+  "defaultPriorityTimeframes": [
+    "240",
+    "3D",
+    "D"
+  ],
+  "defaultPriorityBranches": [
+    "Long Only|All-Time",
+    "Long Only|Last 3 Years",
+    "Both|All-Time"
+  ],
+  "symbols": {
+    "COINBASE:BTCUSD": {
+      "primarySeed": "Crypto Doubled",
+      "secondarySeed": "Traditional Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Long Only|Last 3 Years"]
+    },
+    "COINBASE:ETHUSD": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Traditional Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Long Only|Last 3 Years"]
+    },
+    "COINBASE:SOLUSD": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Traditional Doubled",
+      "priorityTimeframes": ["240", "D", "3D"],
+      "priorityBranches": ["Long Only|Last 3 Years", "Long Only|All-Time"]
+    },
+    "DBC": {
+      "primarySeed": "Traditional Standard",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Both|All-Time"]
+    },
+    "EEM": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Traditional Doubled",
+      "priorityTimeframes": ["240", "D", "3D"],
+      "priorityBranches": ["Long Only|All-Time", "Long Only|Last 3 Years"]
+    },
+    "EFA": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Crypto Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Long Only|Last 3 Years"]
+    },
+    "EMB": {
+      "primarySeed": "Traditional Standard",
+      "priorityTimeframes": ["240", "D", "3D"],
+      "priorityBranches": ["Short Only|All-Time", "Both|All-Time"]
+    },
+    "GLD": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Traditional Doubled",
+      "priorityTimeframes": ["W", "3D", "D"],
+      "priorityBranches": ["Both|All-Time", "Long Only|All-Time"]
+    },
+    "HYG": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Crypto Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Short Only|All-Time", "Both|All-Time"]
+    },
+    "IEF": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Traditional Doubled",
+      "priorityTimeframes": ["D", "240", "3D"],
+      "priorityBranches": ["Short Only|All-Time", "Both|All-Time"]
+    },
+    "IWM": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Crypto Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Both|All-Time"]
+    },
+    "IYR": {
+      "primarySeed": "Traditional Doubled",
+      "secondarySeed": "Crypto Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Both|All-Time"]
+    },
+    "KRE": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Crypto Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Both|All-Time"]
+    },
+    "LQD": {
+      "primarySeed": "Traditional Standard",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Short Only|All-Time", "Both|All-Time"]
+    },
+    "MUB": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Traditional Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Short Only|All-Time", "Both|All-Time"]
+    },
+    "SHY": {
+      "primarySeed": "Crypto Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Short Only|All-Time"]
+    },
+    "SPY": {
+      "primarySeed": "Traditional Doubled",
+      "secondarySeed": "Traditional Standard",
+      "priorityTimeframes": ["W", "3D", "D"],
+      "priorityBranches": ["Long Only|All-Time", "Long Only|Last 3 Years"]
+    },
+    "TIP": {
+      "primarySeed": "Traditional Standard",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Both|Last 3 Years", "Both|All-Time"]
+    },
+    "TLT": {
+      "primarySeed": "Traditional Doubled",
+      "secondarySeed": "Crypto Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Short Only|All-Time"]
+    },
+    "UUP": {
+      "primarySeed": "Traditional Doubled",
+      "priorityTimeframes": ["D", "240", "3D"],
+      "priorityBranches": ["Long Only|All-Time", "Both|All-Time"]
+    },
+    "XHB": {
+      "primarySeed": "Crypto Doubled",
+      "secondarySeed": "Traditional Standard",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Long Only|Last 3 Years"]
+    },
+    "XLE": {
+      "primarySeed": "Crypto Doubled",
+      "priorityTimeframes": ["240", "D", "3D"],
+      "priorityBranches": ["Long Only|Last 3 Years", "Long Only|All-Time"]
+    },
+    "XLF": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Crypto Doubled",
+      "priorityTimeframes": ["3D", "D", "240"],
+      "priorityBranches": ["Long Only|All-Time", "Both|All-Time"]
+    }
+  }
+}

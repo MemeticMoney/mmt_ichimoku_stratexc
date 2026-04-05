@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { assertRequiredInputs, buildStrategyInputIdMap } from './lib/strategy-input-map.mjs';
-import { buildNeighborhoodCandidates, buildPresetCandidates } from './lib/candidates.mjs';
+import { buildPresetCandidates } from './lib/candidates.mjs';
 import {
   buildBestSettingSummaries,
   buildPhase1SeedMap,
@@ -14,6 +14,11 @@ import {
   evaluateQuality,
   extractNormalizedMetrics,
 } from './lib/metrics.mjs';
+import {
+  calculatePhase2ExpectedRuns,
+  loadPhase2SymbolPlan,
+  makePhase2CandidatesResolver,
+} from './lib/phase2-plan.mjs';
 import {
   applyStrategyInputs,
   ensureStrategySession,
@@ -136,6 +141,16 @@ function calculateTotalRuns({ config, candidateCount }) {
     * config.directionModes.length
     * config.windows.length
     * candidateCount;
+}
+
+function capExpectedRuns(expectedRuns, maxRuns) {
+  if (maxRuns === null || maxRuns === undefined) {
+    return expectedRuns;
+  }
+  if (expectedRuns === null || expectedRuns === undefined) {
+    return maxRuns;
+  }
+  return Math.min(expectedRuns, maxRuns);
 }
 
 async function executeRuns({
@@ -284,6 +299,10 @@ async function main() {
   const { config, configDirectory } = loadConfig(args.configPath);
   const strategyPath = resolveConfigPath(configDirectory, config.strategyPath ?? './pine/Ichi_Workflow_Strategy.pine');
   const outputRoot = resolveConfigPath(configDirectory, config.outputDir ?? './optimizer/output');
+  const phase2SymbolPlanPath = config.phase2?.symbolPlanPath
+    ? resolveConfigPath(configDirectory, config.phase2.symbolPlanPath)
+    : null;
+  const phase2SymbolPlan = phase2SymbolPlanPath ? loadPhase2SymbolPlan(phase2SymbolPlanPath) : null;
 
   const { map: inputIdMap } = buildStrategyInputIdMap(strategyPath);
   assertRequiredInputs(inputIdMap, REQUIRED_INPUTS);
@@ -295,14 +314,19 @@ async function main() {
   console.log(`Using config: ${args.configPath}`);
   console.log(`Strategy path: ${strategyPath}`);
   console.log(`Output dir: ${outputDir}`);
+  if (phase2SymbolPlanPath) {
+    console.log(`Phase 2 symbol plan: ${phase2SymbolPlanPath}`);
+  }
 
   await ensureStrategySession(config.strategyName);
 
   const phase1Candidates = buildPresetCandidates(config.phase1?.presetNames);
-  const phase1ExpectedRuns = calculateTotalRuns({
+  const shouldRunPhase1 = args.phase === 'full' || args.phase === 'phase1';
+  const shouldRunPhase2 = (args.phase === 'full' || args.phase === 'phase2') && config.phase2?.enabled !== false;
+  const phase1ExpectedRuns = shouldRunPhase1 ? calculateTotalRuns({
     config,
     candidateCount: phase1Candidates.length,
-  });
+  }) : 0;
   const checkpointEveryRuns = config.checkpointEveryRuns ?? 0;
   const makeCheckpoint = async ({ phase, completedRuns, expectedRuns, results }) => {
     const bestSettingSummaries = buildBestSettingSummaries(results);
@@ -322,31 +346,54 @@ async function main() {
         phase,
         completedRuns,
         expectedRuns,
-        symbolsCompletedApprox: Math.floor(
-          completedRuns / (config.timeframes.length * config.directionModes.length * config.windows.length * phase1Candidates.length)
-        ),
+        symbolsCompletedApprox: expectedRuns
+          ? Math.floor((completedRuns / expectedRuns) * config.symbols.length)
+          : null,
       },
     });
   };
-  const phase1Results = await executeRuns({
-    phase: 'phase1',
-    config,
-    inputIdMap,
-    expectedRuns: phase1ExpectedRuns,
-    checkpointEveryRuns,
-    onCheckpoint: makeCheckpoint,
-    maxRuns: args.maxRuns,
-    candidatesForGroup: () => phase1Candidates,
-  });
+  const phase1Results = shouldRunPhase1
+    ? await executeRuns({
+      phase: 'phase1',
+      config,
+      inputIdMap,
+      expectedRuns: capExpectedRuns(phase1ExpectedRuns, args.maxRuns),
+      checkpointEveryRuns,
+      onCheckpoint: makeCheckpoint,
+      maxRuns: args.maxRuns,
+      candidatesForGroup: () => phase1Candidates,
+    })
+    : [];
 
   let phase2Results = [];
   let phase1SeedMap = {};
 
-  if (args.phase === 'full' && config.phase2?.enabled !== false) {
+  if (shouldRunPhase1) {
     phase1SeedMap = buildPhase1SeedMap(phase1Results, {
       maxSeeds: config.phase2?.maxPresetSeedsPerGroup ?? 2,
     });
-    console.log('Phase 1 seed winners:', summarizeTopSeeds(phase1SeedMap));
+  }
+
+  if (shouldRunPhase2) {
+    if (args.phase === 'phase2' && !phase2SymbolPlan && Object.keys(phase1SeedMap).length === 0) {
+      throw new Error('Phase 2 requires either phase2.symbolPlanPath or a preceding Phase 1 run that produces seed winners.');
+    }
+
+    const phase2CandidatesForGroup = makePhase2CandidatesResolver({
+      config,
+      phase1SeedMap,
+      symbolPlan: phase2SymbolPlan,
+      robustSeedGroupKey,
+    });
+    const phase2ExpectedRuns = calculatePhase2ExpectedRuns({
+      config,
+      candidatesForGroup: phase2CandidatesForGroup,
+    });
+
+    if (Object.keys(phase1SeedMap).length > 0) {
+      console.log('Phase 1 seed winners:', summarizeTopSeeds(phase1SeedMap));
+    }
+    console.log(`Phase 2 planned runs: ${phase2ExpectedRuns}`);
 
     const phase2Budget = args.maxRuns === null ? null : Math.max(args.maxRuns - phase1Results.length, 0);
     if (phase2Budget !== 0) {
@@ -354,23 +401,19 @@ async function main() {
         phase: 'phase2',
         config,
         inputIdMap,
-        expectedRuns: null,
+        expectedRuns: capExpectedRuns(phase2ExpectedRuns, phase2Budget),
         checkpointEveryRuns,
         onCheckpoint: async ({ phase, completedRuns, results }) => {
           const mergedResults = [...phase1Results, ...results];
           await makeCheckpoint({
             phase,
             completedRuns: phase1Results.length + completedRuns,
-            expectedRuns: null,
+            expectedRuns: capExpectedRuns(phase1ExpectedRuns + phase2ExpectedRuns, args.maxRuns),
             results: mergedResults,
           });
         },
         maxRuns: phase2Budget,
-        candidatesForGroup: ({ symbol, directionMode, windowMode }) => {
-          const groupKey = robustSeedGroupKey(symbol, directionMode, windowMode);
-          const seeds = phase1SeedMap[groupKey] ?? [];
-          return buildNeighborhoodCandidates(seeds, config.phase2);
-        },
+        candidatesForGroup: phase2CandidatesForGroup,
       });
     }
   }
