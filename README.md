@@ -60,6 +60,25 @@ If TradingView search lags, the profile scripts page is the most reliable place 
 - Strategy sizing: `75% of equity`
 - Signal model: bar-close confirmed
 
+## Phase 2 Result
+
+Phase 2 optimization showed that one Ichimoku cloud does not fit every market.
+
+The strongest broad result was a faster standard-style neighborhood, while crypto-style and doubled-style neighborhoods still mattered in specific symbol groups.
+
+The practical model after Phase 2 is:
+
+- one broad default family
+- one crypto / beta-sensitive alternate
+- one doubled / macro-sensitive alternate
+- symbol-specific refinement only where the evidence is strong
+
+See:
+
+- [`docs/Phase1_Findings_Report.md`](./docs/Phase1_Findings_Report.md)
+- [`docs/Phase2_Findings_Report.md`](./docs/Phase2_Findings_Report.md)
+- [`docs/Phase2_Public_Update.md`](./docs/Phase2_Public_Update.md)
+
 ## Quick Start
 
 1. Open the TradingView Pine Editor.
@@ -93,6 +112,14 @@ If TradingView search lags, the profile scripts page is the most reliable place 
   - Dashboard field definitions
 - [`docs/Ichi_Workflow_Flowchart.md`](./docs/Ichi_Workflow_Flowchart.md)
   - Full visual decision map with deeper state notes
+- [`docs/Phase1_Findings_Report.md`](./docs/Phase1_Findings_Report.md)
+  - Preset sweep conclusions
+- [`docs/Phase2_Findings_Report.md`](./docs/Phase2_Findings_Report.md)
+  - Final optimizer conclusions after custom neighborhood refinement
+- [`docs/Phase2_Public_Update.md`](./docs/Phase2_Public_Update.md)
+  - Public-facing Phase 2 summary
+- [`docs/Phase2_Announcement_Thread.md`](./docs/Phase2_Announcement_Thread.md)
+  - Social / thread draft based on final results
 - [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md)
   - TradingView publication notes
 
@@ -118,6 +145,10 @@ The recommended reading order is:
 - [`docs/Ichi_Workflow_Logic.md`](./docs/Ichi_Workflow_Logic.md)
 - [`docs/Ichi_Workflow_Flowchart.md`](./docs/Ichi_Workflow_Flowchart.md)
 - [`docs/Ichi_Workflow_Executive_Flowchart.md`](./docs/Ichi_Workflow_Executive_Flowchart.md)
+- [`docs/Phase1_Findings_Report.md`](./docs/Phase1_Findings_Report.md)
+- [`docs/Phase2_Findings_Report.md`](./docs/Phase2_Findings_Report.md)
+- [`docs/Phase2_Public_Update.md`](./docs/Phase2_Public_Update.md)
+- [`docs/Phase2_Announcement_Thread.md`](./docs/Phase2_Announcement_Thread.md)
 - [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md)
 - [`DISCLAIMER.md`](./DISCLAIMER.md)
 - [`LICENSE`](./LICENSE)
