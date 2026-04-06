@@ -26,15 +26,23 @@ Candidates still had to pass quality gates such as:
 
 ## Main Finding
 
-One cloud does not fit everything.
+This was the central question behind the entire Phase 2 pass:
 
-What Phase 2 showed instead is that different symbols lean toward different cloud behaviors:
+- if we refine cloud settings around the strongest preset families
+- and test them across symbols, timeframes, direction modes, and date windows
+- do the results converge on one universal cloud?
+
+They do not.
+
+What the testing showed instead is that different symbols lean toward different cloud behaviors:
 
 - some symbols favored faster standard-style clouds
 - some favored crypto-style clouds
 - some favored doubled / macro-style clouds
 - some rewarded long-only structures
 - some showed more useful short or both-direction behavior
+
+That is a better result than forcing one cloud family onto every market and pretending the variation is not there.
 
 ## Best Broad Default
 
@@ -51,6 +59,8 @@ That family produced:
 - the most passing best-cell outcomes
 - the broadest usefulness across crypto alternatives, gold, credit, rates, and equities
 
+If someone wants one practical public default, this is the family to start from.
+
 ## Alternate Families That Still Matter
 
 The standard neighborhood was not a monopoly.
@@ -64,6 +74,14 @@ Two other families still mattered:
   - strongest in several macro, index, and rate-sensitive contexts
   - important in `SPY`, `TLT`, `UUP`, and part of the bond / rates complex
 
+So the real outcome of Phase 2 is not “throw away the alternates.”
+
+It is:
+
+- keep one broad default
+- keep a small number of serious alternates
+- use symbol-sensitive refinement where the evidence is strong enough to justify it
+
 ## Strongest Standouts
 
 These are some of the most convincing high-quality outcomes with at least `10` trades:
@@ -76,6 +94,8 @@ These are some of the most convincing high-quality outcomes with at least `10` t
 | `SPY` | `1W` | `Long Only` | `All-Time` | `22/52/128/52` | `6.53` | `70.00` | `15.00` | `10` |
 | `DBC` | `3D` | `Long Only` | `All-Time` | `7/22/60/30` | `5.77` | `62.50` | `5.00` | `16` |
 
+There were also several headline results with extremely high profit factor but very low trade count. Those are still interesting, but they should be treated as clues, not production defaults.
+
 ## What This Means
 
 The testing does not support one universal cloud for every market.
@@ -87,7 +107,12 @@ It supports a stronger open-source workflow:
 - one doubled / macro-sensitive alternate family
 - ticker-specific refinement only where the evidence is clearly strong
 
-That is a better result than pretending one static cloud should control every symbol.
+In other words:
+
+- the right lesson is not “optimize everything forever”
+- the right lesson is “use a small family of defaults that actually respects symbol behavior”
+
+That is cleaner, more honest, and more useful than pretending one static cloud should control every symbol.
 
 ## Open Source
 
@@ -103,4 +128,4 @@ See:
 - [Phase 1 findings](/Users/stubookpro/Desktop/mmt_ichi/public_repo/docs/Phase1_Findings_Report.md)
 - [Phase 2 findings](/Users/stubookpro/Desktop/mmt_ichi/public_repo/docs/Phase2_Findings_Report.md)
 - [Phase 2 public update draft](/Users/stubookpro/Desktop/mmt_ichi/public_repo/docs/Phase2_Public_Update_Draft.md)
-
+- [GitHub repository](https://github.com/MemeticMoney/mmt_ichimoku_stratexc)
