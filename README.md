@@ -233,10 +233,6 @@ The recommended reading order is:
 - [`DISCLAIMER.md`](./DISCLAIMER.md)
 - [`LICENSE`](./LICENSE)
 
-## Attribution
-
-Copyright (c) 2026 MemeticMoney.
-
 ## Disclaimer
 
 This project is for educational and research use only. See [`DISCLAIMER.md`](./DISCLAIMER.md).
