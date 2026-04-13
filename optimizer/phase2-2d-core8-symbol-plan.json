@@ -1,0 +1,51 @@
+{
+  "defaultPriorityTimeframes": ["2D"],
+  "defaultPriorityBranches": [
+    "Long Only|All-Time",
+    "Long Only|Last 3 Years",
+    "Short Only|All-Time",
+    "Short Only|Last 3 Years",
+    "Both|All-Time",
+    "Both|Last 3 Years"
+  ],
+  "symbols": {
+    "COINBASE:BTCUSD": {
+      "primarySeed": "Crypto Doubled",
+      "secondarySeed": "Traditional Doubled",
+      "priorityBranches": [
+        "Long Only|All-Time",
+        "Long Only|Last 3 Years",
+        "Short Only|All-Time",
+        "Short Only|Last 3 Years",
+        "Both|All-Time",
+        "Both|Last 3 Years"
+      ]
+    },
+    "COINBASE:ETHUSD": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Traditional Doubled"
+    },
+    "COINBASE:SOLUSD": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Traditional Doubled"
+    },
+    "SPY": {
+      "primarySeed": "Traditional Doubled",
+      "secondarySeed": "Traditional Standard"
+    },
+    "GLD": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Traditional Doubled"
+    },
+    "DBC": {
+      "primarySeed": "Traditional Standard"
+    },
+    "LQD": {
+      "primarySeed": "Traditional Standard"
+    },
+    "KRE": {
+      "primarySeed": "Traditional Standard",
+      "secondarySeed": "Crypto Doubled"
+    }
+  }
+}

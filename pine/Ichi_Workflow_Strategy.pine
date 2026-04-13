@@ -1,0 +1,419 @@
+//@version=6
+//@strategy_alert_message {{strategy.order.alert_message}}
+strategy("MMT Ichi Workflow Strategy", shorttitle = "MMT IchiS", overlay = true, pyramiding = 0, calc_on_every_tick = false, default_qty_type = strategy.percent_of_equity, default_qty_value = 75, commission_type = strategy.commission.percent, commission_value = 0.1, slippage = 1, margin_long = 100, margin_short = 100)
+
+string PRESET_CRYPTO = "Crypto Doubled"
+string PRESET_TRAD_STD = "Traditional Standard"
+string PRESET_TRAD_DBL = "Traditional Doubled"
+string PRESET_CUSTOM = "Custom"
+
+string DIR_BOTH = "Both"
+string DIR_LONG = "Long Only"
+string DIR_SHORT = "Short Only"
+
+string WINDOW_ALL = "All-Time"
+string WINDOW_3Y = "Last 3 Years"
+string WINDOW_CUSTOM = "Custom"
+
+string POS_TOP_LEFT = "Top Left"
+string POS_TOP_RIGHT = "Top Right"
+string POS_BOTTOM_LEFT = "Bottom Left"
+string POS_BOTTOM_RIGHT = "Bottom Right"
+
+string GROUP_ICHI = "Ichimoku"
+string GROUP_SIGNAL = "Signals"
+string GROUP_DISPLAY = "Display"
+string GROUP_BACKTEST = "Backtest"
+
+string preset = input.string(PRESET_CRYPTO, "Preset", options = [PRESET_CRYPTO, PRESET_TRAD_STD, PRESET_TRAD_DBL, PRESET_CUSTOM], group = GROUP_ICHI)
+int customConversion = input.int(20, "Custom Conversion", minval = 1, group = GROUP_ICHI)
+int customBase = input.int(61, "Custom Base", minval = 2, group = GROUP_ICHI)
+int customSpanB = input.int(120, "Custom Span B", minval = 2, group = GROUP_ICHI)
+int customDisplacement = input.int(30, "Custom Displacement", minval = 1, group = GROUP_ICHI)
+string htfTimeframe = input.timeframe("D", "Higher Timeframe", group = GROUP_ICHI)
+
+bool enableBreakout = input.bool(true, "Enable Kumo Breakout", group = GROUP_SIGNAL)
+bool enableChecklist = input.bool(true, "Enable Full Checklist", group = GROUP_SIGNAL)
+bool enableKijun = input.bool(true, "Enable Kijun Bounce", group = GROUP_SIGNAL)
+string directionFilter = input.string(DIR_LONG, "Direction Filter", options = [DIR_BOTH, DIR_LONG, DIR_SHORT], group = GROUP_SIGNAL)
+
+bool showMarkers = input.bool(true, "Show Markers", group = GROUP_DISPLAY)
+bool showInvalidation = input.bool(true, "Show Invalidation Line", group = GROUP_DISPLAY)
+bool showRegimeShading = input.bool(true, "Show Regime Shading", group = GROUP_DISPLAY)
+bool showValidationDashboard = input.bool(true, "Show Validation Dashboard", group = GROUP_DISPLAY)
+string validationPositionLabel = input.string(POS_TOP_RIGHT, "Validation Position", options = [POS_TOP_LEFT, POS_TOP_RIGHT, POS_BOTTOM_LEFT, POS_BOTTOM_RIGHT], group = GROUP_DISPLAY)
+bool pushValidationBelowBanner = input.bool(true, "Push Validation Below Banner", group = GROUP_DISPLAY)
+
+string backtestWindowMode = input.string(WINDOW_ALL, "Backtest Window", options = [WINDOW_ALL, WINDOW_3Y, WINDOW_CUSTOM], group = GROUP_BACKTEST)
+int customWindowStart = input.time(timestamp("2023-01-01T00:00:00"), "Custom Start", group = GROUP_BACKTEST)
+int customWindowEnd = input.time(timestamp("2026-01-01T00:00:00"), "Custom End", group = GROUP_BACKTEST)
+
+color bullColor = color.rgb(32, 178, 170)
+color bearColor = color.rgb(183, 92, 70)
+color neutralColor = color.rgb(138, 146, 158)
+color dashboardBg = color.new(color.rgb(23, 29, 33), 12)
+color chikouColor = color.new(neutralColor, 30)
+
+f_resolve_lengths(_preset, _customConversion, _customBase, _customSpanB, _customDisplacement) =>
+    int conversion = _customConversion
+    int base = _customBase
+    int spanB = _customSpanB
+    int displacement = _customDisplacement
+    if _preset == PRESET_CRYPTO
+        conversion := 20
+        base := 61
+        spanB := 120
+        displacement := 30
+    else if _preset == PRESET_TRAD_STD
+        conversion := 9
+        base := 26
+        spanB := 52
+        displacement := 26
+    else if _preset == PRESET_TRAD_DBL
+        conversion := 18
+        base := 52
+        spanB := 104
+        displacement := 52
+    [conversion, base, spanB, displacement]
+
+f_tenkan(_conversion) =>
+    (ta.highest(high, _conversion) + ta.lowest(low, _conversion)) / 2.0
+
+f_kijun(_base) =>
+    (ta.highest(high, _base) + ta.lowest(low, _base)) / 2.0
+
+f_span_b(_spanB) =>
+    (ta.highest(high, _spanB) + ta.lowest(low, _spanB)) / 2.0
+
+f_span_a(_conversion, _base) =>
+    (f_tenkan(_conversion) + f_kijun(_base)) / 2.0
+
+f_cloud_top_now(_conversion, _base, _spanB, _displacement) =>
+    float spanAValue = f_span_a(_conversion, _base)
+    float spanBValue = f_span_b(_spanB)
+    math.max(spanAValue[_displacement], spanBValue[_displacement])
+
+f_cloud_bottom_now(_conversion, _base, _spanB, _displacement) =>
+    float spanAValue = f_span_a(_conversion, _base)
+    float spanBValue = f_span_b(_spanB)
+    math.min(spanAValue[_displacement], spanBValue[_displacement])
+
+f_price_state(_conversion, _base, _spanB, _displacement) =>
+    float cloudTopValue = f_cloud_top_now(_conversion, _base, _spanB, _displacement)
+    float cloudBottomValue = f_cloud_bottom_now(_conversion, _base, _spanB, _displacement)
+    if na(cloudTopValue) or na(cloudBottomValue)
+        0
+    else
+        close > cloudTopValue ? 1 : close < cloudBottomValue ? -1 : 0
+
+f_future_state(_conversion, _base, _spanB) =>
+    float spanAValue = f_span_a(_conversion, _base)
+    float spanBValue = f_span_b(_spanB)
+    if na(spanAValue) or na(spanBValue)
+        0
+    else
+        spanAValue > spanBValue ? 1 : spanAValue < spanBValue ? -1 : 0
+
+f_tk_state(_conversion, _base) =>
+    float tenkanValue = f_tenkan(_conversion)
+    float kijunValue = f_kijun(_base)
+    if na(tenkanValue) or na(kijunValue)
+        0
+    else
+        tenkanValue > kijunValue ? 1 : tenkanValue < kijunValue ? -1 : 0
+
+f_chikou_state(_conversion, _base, _spanB, _displacement) =>
+    float bodyHighPast = math.max(open[_displacement], close[_displacement])
+    float bodyLowPast = math.min(open[_displacement], close[_displacement])
+    float spanAValue = f_span_a(_conversion, _base)
+    float spanBValue = f_span_b(_spanB)
+    float cloudTopPast = math.max(spanAValue[_displacement * 2], spanBValue[_displacement * 2])
+    float cloudBottomPast = math.min(spanAValue[_displacement * 2], spanBValue[_displacement * 2])
+    if na(bodyHighPast) or na(bodyLowPast) or na(cloudTopPast) or na(cloudBottomPast)
+        0
+    else
+        close > bodyHighPast and close > cloudTopPast ? 1 : close < bodyLowPast and close < cloudBottomPast ? -1 : 0
+
+f_allow_long(_filter) =>
+    _filter != DIR_SHORT
+
+f_allow_short(_filter) =>
+    _filter != DIR_LONG
+
+f_backtest_window(_mode, _customStart, _customEnd) =>
+    int startValue = na
+    int endValue = na
+    int threeYearsMs = 94608000000
+    if _mode == WINDOW_3Y
+        endValue := timenow
+        startValue := timenow - threeYearsMs
+    else if _mode == WINDOW_CUSTOM
+        startValue := math.min(_customStart, _customEnd)
+        endValue := math.max(_customStart, _customEnd)
+    [startValue, endValue]
+
+f_table_position(_label) =>
+    _label == POS_TOP_LEFT ? position.top_left : _label == POS_BOTTOM_LEFT ? position.bottom_left : _label == POS_BOTTOM_RIGHT ? position.bottom_right : position.top_right
+
+f_spacer_text(_useSpacer) =>
+    _useSpacer ? " \n \n \n " : ""
+
+f_manage_horizontal_line(_line, _visible, _price, _color, _style, _width) =>
+    line managed = _line
+    if _visible and not na(_price)
+        if na(managed)
+            managed := line.new(bar_index, _price, bar_index + 1, _price, xloc = xloc.bar_index, extend = extend.right, color = _color, style = _style, width = _width)
+        else
+            line.set_xy1(managed, bar_index, _price)
+            line.set_xy2(managed, bar_index + 1, _price)
+            line.set_extend(managed, extend.right)
+            line.set_color(managed, _color)
+            line.set_style(managed, _style)
+            line.set_width(managed, _width)
+    else if not na(managed)
+        line.delete(managed)
+        managed := na
+    managed
+
+f_format_percent(_value) =>
+    na(_value) ? "n/a" : str.tostring(_value, "#.##") + "%"
+
+f_format_ratio(_value) =>
+    na(_value) ? "n/a" : str.tostring(_value, "#.##")
+
+f_verdict_code(_label) =>
+    _label == "Thin Data" ? 1.0 : _label == "Caution" ? 2.0 : _label == "Valid" ? 3.0 : 0.0
+
+f_format_compact(_value) =>
+    if na(_value)
+        "n/a"
+    else
+        float absValue = math.abs(_value)
+        float scaled = absValue
+        string suffix = ""
+        if absValue >= 1000000000
+            scaled := absValue / 1000000000
+            suffix := "B"
+        else if absValue >= 1000000
+            scaled := absValue / 1000000
+            suffix := "M"
+        else if absValue >= 1000
+            scaled := absValue / 1000
+            suffix := "K"
+        string sign = _value < 0 ? "-" : ""
+        sign + str.tostring(scaled, "#.##") + suffix
+
+f_module_summary(_breakout, _checklist, _kijun) =>
+    string modules = ""
+    if _breakout
+        modules := "BO"
+    if _checklist
+        modules := modules == "" ? "CL" : modules + "/CL"
+    if _kijun
+        modules := modules == "" ? "KJ" : modules + "/KJ"
+    modules == "" ? "None" : modules
+
+f_json_number(_value) =>
+    na(_value) ? "null" : str.tostring(_value, format.mintick)
+
+f_alert_json(_scriptName, _direction, _setup, _scoreCtf, _scoreHtf, _price, _kijun, _cloudTop, _cloudBottom) =>
+    string payload = "{"
+    payload := payload + "\"script\":\"" + _scriptName + "\","
+    payload := payload + "\"symbol\":\"" + syminfo.ticker + "\","
+    payload := payload + "\"timeframe\":\"" + timeframe.period + "\","
+    payload := payload + "\"preset\":\"" + preset + "\","
+    payload := payload + "\"window\":\"" + backtestWindowMode + "\","
+    payload := payload + "\"direction\":\"" + _direction + "\","
+    payload := payload + "\"setup\":\"" + _setup + "\","
+    payload := payload + "\"score_ctf\":" + str.tostring(_scoreCtf) + ","
+    payload := payload + "\"score_htf\":" + str.tostring(_scoreHtf) + ","
+    payload := payload + "\"price\":" + f_json_number(_price) + ","
+    payload := payload + "\"kijun\":" + f_json_number(_kijun) + ","
+    payload := payload + "\"cloud_top\":" + f_json_number(_cloudTop) + ","
+    payload := payload + "\"cloud_bottom\":" + f_json_number(_cloudBottom) + ","
+    payload := payload + "\"timestamp\":" + str.tostring(time)
+    payload := payload + "}"
+    payload
+
+[conversionLength, baseLength, spanBLength, displacement] = f_resolve_lengths(preset, customConversion, customBase, customSpanB, customDisplacement)
+
+float tenkan = f_tenkan(conversionLength)
+float kijun = f_kijun(baseLength)
+float spanA = f_span_a(conversionLength, baseLength)
+float spanB = f_span_b(spanBLength)
+float cloudTopNow = math.max(spanA[displacement], spanB[displacement])
+float cloudBottomNow = math.min(spanA[displacement], spanB[displacement])
+float cloudTopPrev = cloudTopNow[1]
+float cloudBottomPrev = cloudBottomNow[1]
+
+int priceState = f_price_state(conversionLength, baseLength, spanBLength, displacement)
+int futureState = f_future_state(conversionLength, baseLength, spanBLength)
+int tkState = f_tk_state(conversionLength, baseLength)
+int chikouState = f_chikou_state(conversionLength, baseLength, spanBLength, displacement)
+int ctfScore = priceState + futureState + tkState + chikouState
+
+int htfPriceState = request.security(syminfo.tickerid, htfTimeframe, f_price_state(conversionLength, baseLength, spanBLength, displacement)[1], lookahead = barmerge.lookahead_on)
+int htfFutureState = request.security(syminfo.tickerid, htfTimeframe, f_future_state(conversionLength, baseLength, spanBLength)[1], lookahead = barmerge.lookahead_on)
+int htfTkState = request.security(syminfo.tickerid, htfTimeframe, f_tk_state(conversionLength, baseLength)[1], lookahead = barmerge.lookahead_on)
+int htfChikouState = request.security(syminfo.tickerid, htfTimeframe, f_chikou_state(conversionLength, baseLength, spanBLength, displacement)[1], lookahead = barmerge.lookahead_on)
+int htfScore = htfPriceState + htfFutureState + htfTkState + htfChikouState
+
+[windowStart, windowEnd] = f_backtest_window(backtestWindowMode, customWindowStart, customWindowEnd)
+bool windowEnabled = backtestWindowMode != WINDOW_ALL
+bool inBacktestWindow = not windowEnabled or (not na(windowStart) and not na(windowEnd) and time >= windowStart and time <= windowEnd)
+bool forceWindowExit = strategy.position_size != 0 and windowEnabled and not inBacktestWindow
+
+bool allowLong = f_allow_long(directionFilter)
+bool allowShort = f_allow_short(directionFilter)
+bool htfBullOk = htfScore >= 3
+bool htfBearOk = htfScore <= -3
+
+bool priorInCloud = not na(cloudTopPrev) and not na(cloudBottomPrev) and close[1] <= cloudTopPrev and close[1] >= cloudBottomPrev
+bool bullishTkCross = tkState == 1 and tkState[1] != 1
+bool bearishTkCross = tkState == -1 and tkState[1] != -1
+
+bool longBreakoutState = enableBreakout and allowLong and htfBullOk and ctfScore >= 2 and priorInCloud and not na(cloudTopNow) and close > cloudTopNow
+bool shortBreakoutState = enableBreakout and allowShort and htfBearOk and ctfScore <= -2 and priorInCloud and not na(cloudBottomNow) and close < cloudBottomNow
+
+bool longChecklistState = enableChecklist and allowLong and htfBullOk and priceState == 1 and futureState == 1 and tkState == 1 and chikouState == 1 and ctfScore == 4
+bool shortChecklistState = enableChecklist and allowShort and htfBearOk and priceState == -1 and futureState == -1 and tkState == -1 and chikouState == -1 and ctfScore == -4
+
+bool longKijunState = enableKijun and allowLong and htfBullOk and ctfScore >= 3 and priceState == 1 and futureState == 1 and not na(kijun) and low <= kijun and close > kijun and close > open and close[1] > kijun[1]
+bool shortKijunState = enableKijun and allowShort and htfBearOk and ctfScore <= -3 and priceState == -1 and futureState == -1 and not na(kijun) and high >= kijun and close < kijun and close < open and close[1] < kijun[1]
+
+bool longBreakout = longBreakoutState and not longBreakoutState[1]
+bool shortBreakout = shortBreakoutState and not shortBreakoutState[1]
+bool longChecklist = longChecklistState and not longChecklistState[1]
+bool shortChecklist = shortChecklistState and not shortChecklistState[1]
+bool longKijun = longKijunState and not longKijunState[1]
+bool shortKijun = shortKijunState and not shortKijunState[1]
+
+string longSetup = longChecklist ? "Checklist" : longKijun ? "Kijun Bounce" : longBreakout ? "Breakout" : ""
+string shortSetup = shortChecklist ? "Checklist" : shortKijun ? "Kijun Bounce" : shortBreakout ? "Breakout" : ""
+
+string longOrderId = longChecklist ? "L_CHECKLIST" : longKijun ? "L_KIJUN" : longBreakout ? "L_BREAKOUT" : ""
+string shortOrderId = shortChecklist ? "S_CHECKLIST" : shortKijun ? "S_KIJUN" : shortBreakout ? "S_BREAKOUT" : ""
+
+string longEntryMessage = f_alert_json("MMT Ichi Workflow Strategy", "long", longSetup, ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
+string shortEntryMessage = f_alert_json("MMT Ichi Workflow Strategy", "short", shortSetup, ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
+string longExitMessage = f_alert_json("MMT Ichi Workflow Strategy", "exit_long", "Invalidation", ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
+string shortExitMessage = f_alert_json("MMT Ichi Workflow Strategy", "exit_short", "Invalidation", ctfScore, htfScore, close, kijun, cloudTopNow, cloudBottomNow)
+
+bool canEnterLong = inBacktestWindow and allowLong and strategy.position_size == 0 and longSetup != ""
+bool canEnterShort = inBacktestWindow and allowShort and strategy.position_size == 0 and shortSetup != ""
+
+if canEnterLong
+    strategy.entry(longOrderId, strategy.long, alert_message = longEntryMessage)
+else if canEnterShort
+    strategy.entry(shortOrderId, strategy.short, alert_message = shortEntryMessage)
+
+bool exitLong = strategy.position_size > 0 and (forceWindowExit or bearishTkCross or (not na(kijun) and close < kijun) or (not na(cloudTopNow) and close <= cloudTopNow))
+bool exitShort = strategy.position_size < 0 and (forceWindowExit or bullishTkCross or (not na(kijun) and close > kijun) or (not na(cloudBottomNow) and close >= cloudBottomNow))
+
+if exitLong
+    strategy.close("L_BREAKOUT", comment = "Long Invalidation", alert_message = longExitMessage)
+    strategy.close("L_CHECKLIST", comment = "Long Invalidation", alert_message = longExitMessage)
+    strategy.close("L_KIJUN", comment = "Long Invalidation", alert_message = longExitMessage)
+
+if exitShort
+    strategy.close("S_BREAKOUT", comment = "Short Invalidation", alert_message = shortExitMessage)
+    strategy.close("S_CHECKLIST", comment = "Short Invalidation", alert_message = shortExitMessage)
+    strategy.close("S_KIJUN", comment = "Short Invalidation", alert_message = shortExitMessage)
+
+float liveInvalidation = strategy.position_size > 0 ? math.min(kijun, cloudBottomNow) : strategy.position_size < 0 ? math.max(kijun, cloudTopNow) : na
+color regimeColor = priceState == 1 ? bullColor : priceState == -1 ? bearColor : neutralColor
+
+bgcolor(showRegimeShading ? color.new(regimeColor, 90) : na)
+
+plot(tenkan, "Tenkan", color = color.new(bullColor, 0), linewidth = 2)
+plot(kijun, "Kijun", color = color.new(bearColor, 0), linewidth = 2)
+plot(close, "Chikou Span", color = chikouColor, offset = -displacement, linewidth = 1)
+plotCloudA = plot(spanA, "Senkou Span A", color = color.new(bullColor, 0), offset = displacement, linewidth = 1)
+plotCloudB = plot(spanB, "Senkou Span B", color = color.new(bearColor, 0), offset = displacement, linewidth = 1)
+fill(plotCloudA, plotCloudB, color = spanA >= spanB ? color.new(bullColor, 84) : color.new(bearColor, 84), title = "Kumo")
+
+plotshape(showMarkers and longBreakout, "Long Breakout", style = shape.triangleup, location = location.belowbar, color = bullColor, size = size.small, text = "BO")
+plotshape(showMarkers and shortBreakout, "Short Breakout", style = shape.triangledown, location = location.abovebar, color = bearColor, size = size.small, text = "BO")
+plotshape(showMarkers and longChecklist, "Long Checklist", style = shape.circle, location = location.belowbar, color = bullColor, size = size.small, text = "CL")
+plotshape(showMarkers and shortChecklist, "Short Checklist", style = shape.circle, location = location.abovebar, color = bearColor, size = size.small, text = "CL")
+plotshape(showMarkers and longKijun, "Long Kijun Bounce", style = shape.diamond, location = location.belowbar, color = bullColor, size = size.small, text = "KJ")
+plotshape(showMarkers and shortKijun, "Short Kijun Bounce", style = shape.diamond, location = location.abovebar, color = bearColor, size = size.small, text = "KJ")
+
+var line invalidationLine = na
+invalidationLine := f_manage_horizontal_line(invalidationLine, showInvalidation and strategy.position_size != 0, liveInvalidation, bearColor, line.style_dashed, 2)
+
+float grossLossAbs = math.abs(strategy.grossloss)
+float profitFactor = grossLossAbs > 0 ? strategy.grossprofit / grossLossAbs : strategy.grossprofit > 0 ? 99.0 : na
+float netProfitPercent = strategy.netprofit_percent
+float maxDrawdownPercent = strategy.max_drawdown_percent
+int closedTrades = int(strategy.closedtrades)
+float winRate = closedTrades > 0 ? strategy.wintrades / strategy.closedtrades * 100.0 : na
+string moduleSummary = f_module_summary(enableBreakout, enableChecklist, enableKijun)
+string modelSummary = preset + " / " + directionFilter + " / HTF " + htfTimeframe + " / " + backtestWindowMode
+bool thinData = closedTrades < 5
+bool avoidTicker = closedTrades == 0 or netProfitPercent <= 0 or profitFactor < 1.15 or maxDrawdownPercent > 50
+bool cautionTicker = thinData or profitFactor < 1.75 or maxDrawdownPercent > 35 or winRate < 25
+string verdict = avoidTicker ? "Avoid" : cautionTicker ? thinData ? "Thin Data" : "Caution" : "Valid"
+color verdictColor = avoidTicker ? bearColor : cautionTicker ? color.rgb(214, 167, 56) : bullColor
+float verdictCode = f_verdict_code(verdict)
+validationPosition = f_table_position(validationPositionLabel)
+bool useValidationTopSpacer = pushValidationBelowBanner and (validationPositionLabel == POS_TOP_LEFT or validationPositionLabel == POS_TOP_RIGHT)
+int validationBaseRow = useValidationTopSpacer ? 1 : 0
+
+plot(ctfScore, "Brief CTF Score", display = display.data_window)
+plot(htfScore, "Brief HTF Score", display = display.data_window)
+plot(verdictCode, "Brief Verdict Code", display = display.data_window)
+plot(profitFactor, "Brief Profit Factor", display = display.data_window)
+plot(netProfitPercent, "Brief Net Profit %", display = display.data_window)
+plot(maxDrawdownPercent, "Brief Max Drawdown %", display = display.data_window)
+plot(closedTrades, "Brief Closed Trades", display = display.data_window)
+plot(winRate, "Brief Win Rate", display = display.data_window)
+
+var table validationDashboard = table.new(validationPosition, 2, 10, frame_color = color.new(color.white, 80), border_width = 1)
+bool shouldRenderValidationDashboard = barstate.islastconfirmedhistory
+if shouldRenderValidationDashboard
+    if showValidationDashboard
+        table.cell(validationDashboard, 0, 0, f_spacer_text(useValidationTopSpacer), text_color = color.white, bgcolor = na, text_size = size.large)
+        table.cell(validationDashboard, 1, 0, f_spacer_text(useValidationTopSpacer), text_color = color.white, bgcolor = na, text_size = size.large)
+        table.cell(validationDashboard, 0, validationBaseRow + 0, "Validation", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 1, validationBaseRow + 0, "Value", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 0, validationBaseRow + 1, "Chart", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 1, validationBaseRow + 1, syminfo.ticker + " @" + timeframe.period, text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 0, validationBaseRow + 2, "Model", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 1, validationBaseRow + 2, modelSummary, text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 0, validationBaseRow + 3, "Modules", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 1, validationBaseRow + 3, moduleSummary, text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 0, validationBaseRow + 4, "Net P/L", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 1, validationBaseRow + 4, f_format_percent(netProfitPercent) + " / " + f_format_compact(strategy.netprofit), text_color = netProfitPercent >= 0 ? bullColor : bearColor, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 0, validationBaseRow + 5, "Profit Factor", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 1, validationBaseRow + 5, f_format_ratio(profitFactor), text_color = profitFactor >= 1.75 ? bullColor : profitFactor >= 1.15 ? color.rgb(214, 167, 56) : bearColor, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 0, validationBaseRow + 6, "Max DD", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 1, validationBaseRow + 6, f_format_percent(maxDrawdownPercent), text_color = maxDrawdownPercent <= 35 ? bullColor : maxDrawdownPercent <= 50 ? color.rgb(214, 167, 56) : bearColor, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 0, validationBaseRow + 7, "Trades / Win", text_color = color.white, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 1, validationBaseRow + 7, str.tostring(closedTrades) + " / " + f_format_percent(winRate), text_color = winRate >= 25 ? bullColor : winRate > 0 ? color.rgb(214, 167, 56) : bearColor, bgcolor = dashboardBg)
+        table.cell(validationDashboard, 0, validationBaseRow + 8, "Verdict", text_color = color.white, bgcolor = color.new(verdictColor, 82))
+        table.cell(validationDashboard, 1, validationBaseRow + 8, verdict, text_color = color.white, bgcolor = color.new(verdictColor, 82), text_size = size.large)
+        if not useValidationTopSpacer
+            table.cell(validationDashboard, 0, 9, "", bgcolor = na)
+            table.cell(validationDashboard, 1, 9, "", bgcolor = na)
+    else
+        table.cell(validationDashboard, 0, 0, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 0, "", bgcolor = na)
+        table.cell(validationDashboard, 0, 1, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 1, "", bgcolor = na)
+        table.cell(validationDashboard, 0, 2, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 2, "", bgcolor = na)
+        table.cell(validationDashboard, 0, 3, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 3, "", bgcolor = na)
+        table.cell(validationDashboard, 0, 4, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 4, "", bgcolor = na)
+        table.cell(validationDashboard, 0, 5, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 5, "", bgcolor = na)
+        table.cell(validationDashboard, 0, 6, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 6, "", bgcolor = na)
+        table.cell(validationDashboard, 0, 7, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 7, "", bgcolor = na)
+        table.cell(validationDashboard, 0, 8, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 8, "", bgcolor = na)
+        table.cell(validationDashboard, 0, 9, "", bgcolor = na)
+        table.cell(validationDashboard, 1, 9, "", bgcolor = na)

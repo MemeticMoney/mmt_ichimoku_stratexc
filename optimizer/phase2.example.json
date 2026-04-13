@@ -1,0 +1,144 @@
+{
+  "strategyName": "MMT Ichi Workflow Strategy",
+  "strategyPath": "../pine/Ichi_Workflow_Strategy.pine",
+  "outputDir": "./output/phase2",
+  "symbols": [
+    "COINBASE:BTCUSD",
+    "COINBASE:ETHUSD",
+    "COINBASE:SOLUSD",
+    "DBC",
+    "EEM",
+    "EFA",
+    "EMB",
+    "GLD",
+    "HYG",
+    "IEF",
+    "IWM",
+    "IYR",
+    "KRE",
+    "LQD",
+    "MUB",
+    "SHY",
+    "SPY",
+    "TIP",
+    "TLT",
+    "UUP",
+    "XHB",
+    "XLE",
+    "XLF"
+  ],
+  "timeframes": [
+    "W",
+    "3D",
+    "D",
+    "240",
+    "60",
+    "15"
+  ],
+  "directionModes": [
+    "Long Only",
+    "Short Only",
+    "Both"
+  ],
+  "windows": [
+    "All-Time",
+    "Last 3 Years"
+  ],
+  "higherTimeframeMap": {
+    "15": "60",
+    "60": "240",
+    "240": "D",
+    "D": "W",
+    "3D": "W",
+    "W": "M"
+  },
+  "higherTimeframeCandidates": {},
+  "delaysMs": {
+    "afterChartChange": 1500,
+    "afterInputChange": 1500,
+    "betweenRetries": 1000
+  },
+  "metricRetries": 8,
+  "checkpointEveryRuns": 12,
+  "fixedInputs": {
+    "enableBreakout": true,
+    "enableChecklist": true,
+    "enableKijun": true,
+    "showMarkers": false,
+    "showInvalidation": false,
+    "showRegimeShading": false,
+    "showValidationDashboard": true,
+    "validationPositionLabel": "Top Right",
+    "pushValidationBelowBanner": true
+  },
+  "qualityGates": {
+    "All-Time": {
+      "minimumTrades": 10,
+      "maxDrawdownPct": 40,
+      "requirePositiveNetProfit": true,
+      "maxMarginCalls": 0
+    },
+    "Last 3 Years": {
+      "minimumTrades": 6,
+      "maxDrawdownPct": 40,
+      "requirePositiveNetProfit": true,
+      "maxMarginCalls": 0
+    }
+  },
+  "phase1": {
+    "presetNames": [
+      "Traditional Standard",
+      "Traditional Doubled",
+      "Crypto Doubled"
+    ]
+  },
+  "phase2": {
+    "enabled": true,
+    "symbolPlanPath": "./phase2-symbol-plan.example.json",
+    "maxPresetSeedsPerGroup": 2,
+    "includeSeedPreset": true,
+    "neighborhoods": {
+      "Traditional Standard": {
+        "conversion": [7, 9, 11],
+        "base": [22, 26, 30],
+        "spanB": [44, 52, 60],
+        "displacement": [22, 26, 30]
+      },
+      "Traditional Doubled": {
+        "conversion": [14, 18, 22],
+        "base": [40, 52, 64],
+        "spanB": [80, 104, 128],
+        "displacement": [40, 52, 64]
+      },
+      "Crypto Doubled": {
+        "conversion": [16, 20, 24],
+        "base": [49, 61, 73],
+        "spanB": [96, 120, 144],
+        "displacement": [24, 30, 36]
+      }
+    },
+    "bounds": {
+      "conversion": {
+        "min": 5,
+        "max": 40
+      },
+      "base": {
+        "min": 10,
+        "max": 160
+      },
+      "spanB": {
+        "min": 20,
+        "max": 320
+      },
+      "displacement": {
+        "min": 5,
+        "max": 80
+      },
+      "baseMinusConversionMin": 6,
+      "spanBMinusBaseMin": 10
+    }
+  },
+  "reports": {
+    "includeRawMetrics": false
+  }
+}
