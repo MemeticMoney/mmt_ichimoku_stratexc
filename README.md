@@ -48,6 +48,12 @@ The idea is simple:
 - [`pine/Ichi_2D_Overlay_Profiles_Strategy.pine`](./pine/Ichi_2D_Overlay_Profiles_Strategy.pine)
   - TradingView title: `MMT Ichi 2D Overlay Profiles Strategy`
 
+## Public Scope
+
+This repository is scoped to the public `MMT Ichi Workflow` family: Pine source files, public documentation, example optimizer configuration, and the local optimizer harness used to reproduce the published Ichimoku research.
+
+Generated optimizer run outputs, local credentials, workstation-specific files, and unrelated trading systems are not part of this release.
+
 ## TradingView Status
 
 - Profile scripts page: [`memeticmoney` on TradingView](https://www.tradingview.com/u/memeticmoney/#published-scripts)
@@ -123,6 +129,12 @@ See:
 - [`docs/Phase2_2D_Findings_Report.md`](./docs/Phase2_2D_Findings_Report.md)
 - [`docs/Phase2_Public_Update.md`](./docs/Phase2_Public_Update.md)
 
+## Optimizer Harness
+
+The [`optimizer`](./optimizer) folder contains the local research harness used to evaluate candidate Ichimoku settings against TradingView Strategy Tester results.
+
+It includes example configs, symbol plans, candidate generation helpers, reporting utilities, and unit tests. Generated result folders under `optimizer/output/` are intentionally ignored so the public repository stays source-only.
+
 ## Quick Start
 
 1. Open the TradingView Pine Editor.
@@ -149,11 +161,14 @@ See:
 
 ### Start Here
 
+- [`docs/MMT_Ichi_TradingView_Beginner_Guide.md`](./docs/MMT_Ichi_TradingView_Beginner_Guide.md)
+  - Best first read if you are new to the project or to TradingView
+  - Plain-English guide covering strategy, overlay, and profile scripts together
 - [`docs/Ichi_Workflow_Executive_Flowchart.md`](./docs/Ichi_Workflow_Executive_Flowchart.md)
-  - Best first read for most users
+  - Best second read for most users
   - One-screen workflow showing how the strategy and overlay work together
 - [`docs/Ichi_Workflow_Logic.md`](./docs/Ichi_Workflow_Logic.md)
-  - Best second read
+  - Best third read
   - Full human-readable trading logic, state conditions, targets, and invalidations
 
 ### Reference
@@ -174,13 +189,16 @@ See:
   - Social / thread draft based on final results
 - [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md)
   - TradingView publication notes
+- [`docs/RELEASE_NOTES.md`](./docs/RELEASE_NOTES.md)
+  - Public release notes for the current GitHub source package
 
 The recommended reading order is:
 
-1. Executive flowchart
-2. Logic document
-3. Metrics reference
-4. Full flowchart deep dive
+1. Beginner guide
+2. Executive flowchart
+3. Logic document
+4. Metrics reference
+5. Full flowchart deep dive
 
 ## Design Notes
 
@@ -203,11 +221,15 @@ The recommended reading order is:
 - [`docs/Ichi_Workflow_Logic.md`](./docs/Ichi_Workflow_Logic.md)
 - [`docs/Ichi_Workflow_Flowchart.md`](./docs/Ichi_Workflow_Flowchart.md)
 - [`docs/Ichi_Workflow_Executive_Flowchart.md`](./docs/Ichi_Workflow_Executive_Flowchart.md)
+- [`docs/MMT_Ichi_TradingView_Beginner_Guide.md`](./docs/MMT_Ichi_TradingView_Beginner_Guide.md)
 - [`docs/Phase1_Findings_Report.md`](./docs/Phase1_Findings_Report.md)
 - [`docs/Phase2_Findings_Report.md`](./docs/Phase2_Findings_Report.md)
+- [`docs/Phase2_2D_Findings_Report.md`](./docs/Phase2_2D_Findings_Report.md)
 - [`docs/Phase2_Public_Update.md`](./docs/Phase2_Public_Update.md)
 - [`docs/Phase2_Announcement_Thread.md`](./docs/Phase2_Announcement_Thread.md)
 - [`docs/TRADINGVIEW_PUBLICATION.md`](./docs/TRADINGVIEW_PUBLICATION.md)
+- [`docs/RELEASE_NOTES.md`](./docs/RELEASE_NOTES.md)
+- [`optimizer/README.md`](./optimizer/README.md)
 - [`DISCLAIMER.md`](./DISCLAIMER.md)
 - [`LICENSE`](./LICENSE)
 

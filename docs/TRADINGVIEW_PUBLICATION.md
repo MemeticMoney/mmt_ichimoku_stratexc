@@ -193,4 +193,4 @@ GitHub should mirror the public TradingView release set:
 - link to the public TradingView profile page
 - keep GitHub as the canonical source repository
 - use TradingView as the chart-user distribution layer
-- keep `MMFE` scripts and intermarket research out of this public repository
+- keep GitHub focused on the public `MMT Ichi Workflow` release set

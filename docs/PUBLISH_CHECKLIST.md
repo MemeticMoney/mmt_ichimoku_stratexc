@@ -6,8 +6,7 @@ Use this checklist before pushing the public repo to GitHub.
 
 - Include only Pine scripts and public-facing documentation.
 - Include only the public `MMT Ichi Workflow` script family.
-- Exclude private research notes, source materials, screenshots, local scripts, and automation tooling.
-- Exclude `MMFE` scripts, intermarket regime research, and private validation notes.
+- Exclude non-public research notes, source materials, screenshots, local scripts, generated outputs, and automation artifacts unless they are intentionally part of the public release.
 - Exclude third-party vendored repositories unless they are intentionally being published as independent subprojects.
 
 ## Scrub Review
@@ -16,7 +15,7 @@ Use this checklist before pushing the public repo to GitHub.
 - Confirm there are no usernames, machine names, or local install paths.
 - Confirm there are no screenshots or exported UI captures.
 - Confirm there are no API keys, tokens, cookies, or session data.
-- Confirm there are no private notes or internal-only setup instructions.
+- Confirm there are no non-public notes or internal-only setup instructions.
 
 ## Attribution
 
@@ -33,7 +32,7 @@ Use this checklist before pushing the public repo to GitHub.
 - Verify the default settings match the intended public defaults.
 - Verify the profiles overlay shows the expected profile label on a covered ticker.
 - Verify the 2D scripts show `2D OK` on a `2D` chart and a warning away from `2D`.
-- Verify there are no `MMFE` files in the public tree and any `MMFE` text is limited to exclusion guardrails.
+- Verify the public tree contains only files intended for this release.
 
 ## GitHub Release
 
